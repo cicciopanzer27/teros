@@ -84,23 +84,54 @@ Significant progress has been made on the TEROS kernel completion. Core infrastr
 - **SimpleFS TODO resolved:** 15
 - **Overall progress:** ~30% of TODO items cleared
 
+## Recent Updates (Session 2025-01-27)
+
+### Completed Components
+
+#### Interrupt System ✅
+- Centralized `interrupt_send_eoi()` for all IRQ handlers
+- PIC remapping (IRQs 0-15 → interrupts 32-47)
+- Interrupt nesting support with level tracking
+- Enhanced exception handlers with error code parsing
+- Page fault handler with CR2 address display
+- Commit: `4261da4`
+
+#### IPC System ✅
+- Pipes: Full cleanup with `kfree` integration
+- Signals: Complete integer formatting in `signal_send()`
+- Shared Memory: Named memory support (MVP)
+- Semaphores: Spinlock with `pause` instruction
+- `shm_unlink()` fully implemented
+- **8 TODO items resolved**
+- Commit: `0866b95`
+
+#### System Calls ✅
+- **30+ syscalls implemented**
+- File: lseek, stat
+- Directory: opendir, readdir, closedir, mkdir, rmdir
+- Signals: kill, signal, sigaction
+- IPC: pipe, shmget, shmat, shmdt
+- All integrated with IPC subsystem
+- **15 missing syscalls added**
+- Commit: `bebde06`
+
+---
+
 ## Remaining Work
 
 ### High Priority
-1. **Interrupt System** - Complete EOI, stack switching, nesting
-2. **Context Switch** - Testing and verification
-3. **System Calls** - Complete all 25+ syscalls
-4. **IPC** - Pipes, signals, shared memory
+1. **Context Switch** - Testing and verification ⏳
+2. **Userspace** - Init process (PID 1) and minimal shell
+3. **Utilities** - ls, cat, echo, ps, kill with syscall integration
 
 ### Medium Priority
-5. **Userspace** - Init process and shell
-6. **Utilities** - ls, cat, echo, ps, kill
-7. **Musl LibC** - Integration and linking
+4. **QEMU Integration Test** - Full boot test with syscalls
+5. **Musl LibC** - Integration and linking
 
 ### Low Priority
-8. **Networking** - Decision on scope needed
-9. **Lambda³ Engine** - Bytecode generation
-10. **Documentation** - Technical specifications
+6. **Networking** - Analyze 19 TODO, decide scope (19 TODOs)
+7. **Lambda³ Engine** - Complete 3 TODO items (bytecode gen, GC, TVM)
+8. **Documentation** - T3-ISA spec, ABI spec, calling convention
 
 ## Next Steps
 
