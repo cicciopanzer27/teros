@@ -14,12 +14,13 @@ BIN_DIR = bin
 INCLUDE_DIR = include
 
 # Flags
-CFLAGS = -Wall -Wextra -std=c11 -I$(INCLUDE_DIR) -g -O2
+CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(INCLUDE_DIR) -g -O2
 ASFLAGS = -f elf64
 LDFLAGS = -nostdlib -T linker.ld
 
 # Source files
 KERNEL_SRCS = $(wildcard $(SRC_DIR)/kernel/*.c)
+INCLUDE_SRCS = $(wildcard $(INCLUDE_DIR)/kernel/*.h)
 BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.S)
 DRIVER_SRCS = $(wildcard $(SRC_DIR)/drivers/*.c)
 FS_SRCS = $(wildcard $(SRC_DIR)/fs/*.c)
