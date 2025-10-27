@@ -14,28 +14,44 @@ BIN_DIR = bin
 INCLUDE_DIR = include
 
 # Flags
-CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(SRC_DIR)/kernel/mm -I$(SRC_DIR)/kernel/proc -I$(SRC_DIR)/drivers/char -I$(SRC_DIR)/fs/vfs -I$(SRC_DIR)/fs/simplefs -I$(INCLUDE_DIR) -g -O2
+CFLAGS = -Wall -Wextra -Werror -std=c11 \
+	-ffreestanding -nostdlib -m64 \
+	-mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+	-I$(SRC_DIR)/kernel \
+	-I$(SRC_DIR)/kernel/mm \
+	-I$(SRC_DIR)/kernel/proc \
+	-I$(SRC_DIR)/kernel/fs \
+	-I$(SRC_DIR)/kernel/drivers \
+	-I$(SRC_DIR)/drivers/char \
+	-I$(INCLUDE_DIR) \
+	-g -O2
 ASFLAGS = -f elf64
-LDFLAGS = -nostdlib
+LDFLAGS = -nostdlib -static -z max-page-size=0x1000
 
 # Source files
 KERNEL_SRCS = $(wildcard $(SRC_DIR)/kernel/*.c)
-INCLUDE_SRCS = $(wildcard $(INCLUDE_DIR)/kernel/*.h)
+MM_SRCS = $(wildcard $(SRC_DIR)/kernel/mm/*.c)
+PROC_SRCS = $(wildcard $(SRC_DIR)/kernel/proc/*.c)
+FS_SRCS = $(wildcard $(SRC_DIR)/kernel/fs/*.c)
+DRIVER_SRCS = $(wildcard $(SRC_DIR)/kernel/drivers/*.c) $(wildcard $(SRC_DIR)/drivers/char/*.c)
 BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.S)
-DRIVER_SRCS = $(wildcard $(SRC_DIR)/drivers/**/*.c)
-FS_SRCS = $(wildcard $(SRC_DIR)/fs/**/*.c)
+PROC_ASM_SRCS = $(wildcard $(SRC_DIR)/kernel/proc/*.S)
 TOOL_SRCS = $(wildcard tools/*.c)
 LIBC_SRCS = $(wildcard $(SRC_DIR)/lib/libc/*.c)
 
 # Object files
 KERNEL_OBJS = $(KERNEL_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
-BOOT_OBJS = $(BOOT_SRCS:$(SRC_DIR)/%.S=$(BUILD_DIR)/%.o)
-DRIVER_OBJS = $(DRIVER_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+MM_OBJS = $(MM_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+PROC_OBJS = $(PROC_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 FS_OBJS = $(FS_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+DRIVER_OBJS = $(DRIVER_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+BOOT_OBJS = $(BOOT_SRCS:$(SRC_DIR)/%.S=$(BUILD_DIR)/%.o)
+PROC_ASM_OBJS = $(PROC_ASM_SRCS:$(SRC_DIR)/%.S=$(BUILD_DIR)/%.o)
 TOOL_OBJS = $(TOOL_SRCS:tools/%.c=$(BUILD_DIR)/tools/%.o)
 LIBC_OBJS = $(LIBC_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
-ALL_OBJS = $(BOOT_OBJS) $(KERNEL_OBJS) $(DRIVER_OBJS) $(FS_OBJS) $(LIBC_OBJS)
+ALL_OBJS = $(BOOT_OBJS) $(KERNEL_OBJS) $(MM_OBJS) $(PROC_OBJS) $(PROC_ASM_OBJS) \
+	   $(FS_OBJS) $(DRIVER_OBJS) $(LIBC_OBJS)
 
 # Tools
 T3_LINKER = $(BIN_DIR)/t3_linker
