@@ -101,3 +101,77 @@ void console_scroll(void) {
     console_column = 0;
 }
 
+void console_move_cursor(size_t row, size_t col) {
+    if (row < VGA_HEIGHT && col < VGA_WIDTH) {
+        console_row = row;
+        console_column = col;
+    }
+}
+
+void console_get_cursor(size_t* row, size_t* col) {
+    if (row) *row = console_row;
+    if (col) *col = console_column;
+}
+
+void console_set_attribute(uint8_t attr) {
+    console_color = attr;
+}
+
+// Helper function to convert digit to character
+static char digit_to_char(int digit) {
+    if (digit < 10) return '0' + digit;
+    return 'A' + (digit - 10);
+}
+
+void console_put_number(int value, int base) {
+    if (value == 0) {
+        console_putchar('0');
+        return;
+    }
+    
+    if (value < 0 && base == 10) {
+        console_putchar('-');
+        value = -value;
+    }
+    
+    // Convert number
+    char buffer[32];
+    int i = 0;
+    
+    while (value > 0) {
+        buffer[i++] = digit_to_char(value % base);
+        value /= base;
+    }
+    
+    // Print reversed
+    for (int j = i - 1; j >= 0; j--) {
+        console_putchar(buffer[j]);
+    }
+}
+
+void console_put_hex(uint32_t value) {
+    console_putchar('0');
+    console_putchar('x');
+    if (value == 0) {
+        console_putchar('0');
+        return;
+    }
+    
+    char buffer[8];
+    int i = 0;
+    
+    while (value > 0) {
+        buffer[i++] = digit_to_char(value & 0xF);
+        value >>= 4;
+    }
+    
+    // Print reversed
+    for (int j = i - 1; j >= 0; j--) {
+        console_putchar(buffer[j]);
+    }
+}
+
+void console_put_dec(int value) {
+    console_put_number(value, 10);
+}
+

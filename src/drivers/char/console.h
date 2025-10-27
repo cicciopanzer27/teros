@@ -40,6 +40,16 @@ void console_putchar(char c);
 void console_puts(const char* str);
 void console_write(const char* data, size_t length);
 void console_scroll(void);
+void console_move_cursor(size_t row, size_t col);
+void console_get_cursor(size_t* row, size_t* col);
+void console_set_attribute(uint8_t attr);
+
+// Advanced functions
+void console_printf(const char* format, ...);
+void console_vprintf(const char* format, va_list args);
+void console_put_number(int value, int base);
+void console_put_hex(uint32_t value);
+void console_put_dec(int value);
 
 #endif // CONSOLE_H
 
