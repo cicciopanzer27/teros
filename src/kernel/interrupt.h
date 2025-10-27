@@ -89,6 +89,28 @@ bool interrupt_enabled(void);
 void interrupt_handler_common(uint32_t interrupt_num, uint32_t error_code);
 
 /**
+ * @brief Send End-Of-Interrupt signal to PIC
+ * @param irq IRQ number (0-15)
+ */
+void interrupt_send_eoi(uint8_t irq);
+
+/**
+ * @brief Enable interrupt nesting
+ */
+void interrupt_enable_nesting(void);
+
+/**
+ * @brief Disable interrupt nesting
+ */
+void interrupt_disable_nesting(void);
+
+/**
+ * @brief Get current nesting level
+ * @return Nesting level
+ */
+uint32_t interrupt_get_nesting_level(void);
+
+/**
  * @brief Get current privilege level
  * @return Current privilege level (0=kernel, 1=supervisor, 2=user)
  */
@@ -120,6 +142,18 @@ void idt_init(void);
  * @param privilege Privilege level required
  */
 void idt_set_entry(uint8_t index, uint64_t base, uint8_t privilege);
+
+/**
+ * @brief Mask (disable) a hardware IRQ
+ * @param irq IRQ number (0-15)
+ */
+void pic_mask_irq(uint8_t irq);
+
+/**
+ * @brief Unmask (enable) a hardware IRQ
+ * @param irq IRQ number (0-15)
+ */
+void pic_unmask_irq(uint8_t irq);
 
 #endif // INTERRUPT_H
 

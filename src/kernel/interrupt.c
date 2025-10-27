@@ -32,6 +32,10 @@ static privilege_context_t priv_ctx = {
     .interrupt_stack_ptr = 0
 };
 
+// Interrupt nesting support
+static uint32_t interrupt_nesting_level = 0;
+static bool interrupt_nesting_enabled = false;
+
 void interrupt_init(void) {
     // Clear all handlers
     for (int i = 0; i < MAX_INTERRUPTS; i++) {
@@ -69,10 +73,45 @@ bool interrupt_enabled(void) {
 }
 
 void interrupt_handler_common(uint32_t interrupt_num, uint32_t error_code) {
+    // Track nesting level
+    interrupt_nesting_level++;
+    
+    // Re-enable interrupts if nesting is allowed
+    if (interrupt_nesting_enabled && interrupt_nesting_level == 1) {
+        asm volatile("sti");
+    }
+    
     if (interrupt_handlers[interrupt_num] != NULL) {
         interrupt_handlers[interrupt_num](interrupt_num, error_code);
     }
-    // Unhandled interrupt
+    
+    // Disable interrupts before returning
+    if (interrupt_nesting_enabled) {
+        asm volatile("cli");
+    }
+    
+    interrupt_nesting_level--;
+}
+
+void interrupt_send_eoi(uint8_t irq) {
+    // Send EOI to slave PIC if IRQ >= 8
+    if (irq >= 8) {
+        outb(0xA0, 0x20);
+    }
+    // Always send EOI to master PIC
+    outb(0x20, 0x20);
+}
+
+void interrupt_enable_nesting(void) {
+    interrupt_nesting_enabled = true;
+}
+
+void interrupt_disable_nesting(void) {
+    interrupt_nesting_enabled = false;
+}
+
+uint32_t interrupt_get_nesting_level(void) {
+    return interrupt_nesting_level;
 }
 
 // =============================================================================
@@ -96,11 +135,85 @@ bool privilege_check(uint8_t required_level) {
 }
 
 // =============================================================================
+// PIC (Programmable Interrupt Controller) Management
+// =============================================================================
+
+/**
+ * @brief Remap PIC IRQs from 0-15 to 32-47 to avoid conflicts with CPU exceptions
+ */
+static void pic_remap(void) {
+    // Save masks
+    uint8_t mask1 = inb(0x21);
+    uint8_t mask2 = inb(0xA1);
+    
+    // Start initialization sequence (ICW1)
+    outb(0x20, 0x11);  // Master PIC
+    outb(0xA0, 0x11);  // Slave PIC
+    
+    // ICW2: Set vector offsets
+    outb(0x21, 0x20);  // Master PIC: IRQs 0-7 → interrupts 32-39
+    outb(0xA1, 0x28);  // Slave PIC: IRQs 8-15 → interrupts 40-47
+    
+    // ICW3: Setup cascade
+    outb(0x21, 0x04);  // Master: slave on IRQ2
+    outb(0xA1, 0x02);  // Slave: cascade identity
+    
+    // ICW4: 8086 mode
+    outb(0x21, 0x01);
+    outb(0xA1, 0x01);
+    
+    // Restore masks
+    outb(0x21, mask1);
+    outb(0xA1, mask2);
+    
+    console_puts("PIC: Remapped IRQs 0-15 to interrupts 32-47\n");
+}
+
+/**
+ * @brief Mask (disable) an IRQ
+ */
+void pic_mask_irq(uint8_t irq) {
+    uint16_t port;
+    uint8_t value;
+    
+    if (irq < 8) {
+        port = 0x21;  // Master PIC
+    } else {
+        port = 0xA1;  // Slave PIC
+        irq -= 8;
+    }
+    
+    value = inb(port) | (1 << irq);
+    outb(port, value);
+}
+
+/**
+ * @brief Unmask (enable) an IRQ
+ */
+void pic_unmask_irq(uint8_t irq) {
+    uint16_t port;
+    uint8_t value;
+    
+    if (irq < 8) {
+        port = 0x21;  // Master PIC
+    } else {
+        port = 0xA1;  // Slave PIC
+        irq -= 8;
+    }
+    
+    value = inb(port) & ~(1 << irq);
+    outb(port, value);
+}
+
+// =============================================================================
 // INTERRUPT DESCRIPTOR TABLE
 // =============================================================================
 
 void idt_init(void) {
     console_puts("IDT: Initializing Interrupt Descriptor Table...\n");
+
+    // Remap PIC before setting up IDT
+    pic_remap();
 
     // Clear IDT
     memset(idt, 0, sizeof(idt_entry_t) * IDT_SIZE);
@@ -172,25 +285,90 @@ void idt_set_entry(uint8_t index, uint64_t base, uint8_t privilege) {
 // EXCEPTION HANDLERS
 // =============================================================================
 
-// Exception handler prototypes
-void exception_handler_0(void) { console_puts("EXCEPTION: Divide by zero\n"); while(1); }
-void exception_handler_1(void) { console_puts("EXCEPTION: Debug\n"); while(1); }
-void exception_handler_2(void) { console_puts("EXCEPTION: Non-maskable interrupt\n"); while(1); }
-void exception_handler_3(void) { console_puts("EXCEPTION: Breakpoint\n"); while(1); }
-void exception_handler_4(void) { console_puts("EXCEPTION: Overflow\n"); while(1); }
-void exception_handler_5(void) { console_puts("EXCEPTION: Bound range exceeded\n"); while(1); }
-void exception_handler_6(void) { console_puts("EXCEPTION: Invalid opcode\n"); while(1); }
-void exception_handler_7(void) { console_puts("EXCEPTION: Device not available\n"); while(1); }
-void exception_handler_8(void) { console_puts("EXCEPTION: Double fault\n"); while(1); }
-void exception_handler_10(void) { console_puts("EXCEPTION: Invalid TSS\n"); while(1); }
-void exception_handler_11(void) { console_puts("EXCEPTION: Segment not present\n"); while(1); }
-void exception_handler_12(void) { console_puts("EXCEPTION: Stack segment fault\n"); while(1); }
-void exception_handler_13(void) { console_puts("EXCEPTION: General protection fault\n"); while(1); }
-void exception_handler_14(void) { console_puts("EXCEPTION: Page fault\n"); while(1); }
-void exception_handler_16(void) { console_puts("EXCEPTION: x87 floating point\n"); while(1); }
-void exception_handler_17(void) { console_puts("EXCEPTION: Alignment check\n"); while(1); }
-void exception_handler_18(void) { console_puts("EXCEPTION: Machine check\n"); while(1); }
-void exception_handler_19(void) { console_puts("EXCEPTION: SIMD floating point\n"); while(1); }
+// Helper function to print exception with error code
+static void exception_panic(const char* message, uint32_t error_code, bool has_error_code) {
+    console_puts("\n=== KERNEL PANIC ===\n");
+    console_puts(message);
+    if (has_error_code) {
+        console_puts("\nError Code: 0x");
+        char hex[9];
+        for (int i = 7; i >= 0; i--) {
+            uint8_t digit = (error_code >> (i * 4)) & 0xF;
+            hex[7-i] = digit < 10 ? '0' + digit : 'A' + digit - 10;
+        }
+        hex[8] = '\0';
+        console_puts(hex);
+    }
+    console_puts("\nSystem Halted.\n");
+    while(1) { asm volatile("cli; hlt"); }
+}
+
+// Exception handlers without error code
+void exception_handler_0(void) { exception_panic("EXCEPTION: Divide by zero", 0, false); }
+void exception_handler_1(void) { exception_panic("EXCEPTION: Debug", 0, false); }
+void exception_handler_2(void) { exception_panic("EXCEPTION: Non-maskable interrupt", 0, false); }
+void exception_handler_3(void) { exception_panic("EXCEPTION: Breakpoint", 0, false); }
+void exception_handler_4(void) { exception_panic("EXCEPTION: Overflow", 0, false); }
+void exception_handler_5(void) { exception_panic("EXCEPTION: Bound range exceeded", 0, false); }
+void exception_handler_6(void) { exception_panic("EXCEPTION: Invalid opcode", 0, false); }
+void exception_handler_7(void) { exception_panic("EXCEPTION: Device not available", 0, false); }
+void exception_handler_16(void) { exception_panic("EXCEPTION: x87 floating point", 0, false); }
+void exception_handler_18(void) { exception_panic("EXCEPTION: Machine check", 0, false); }
+void exception_handler_19(void) { exception_panic("EXCEPTION: SIMD floating point", 0, false); }
+
+// Exception handlers WITH error code (pushed by CPU)
+// Note: In a real implementation, these would be assembly stubs that extract
+// the error code from the stack. For now, we mark them as having error codes.
+void exception_handler_8(void) { 
+    // Double fault - error code is always 0
+    exception_panic("EXCEPTION: Double fault", 0, true); 
+}
+
+void exception_handler_10(void) { 
+    // Invalid TSS - error code contains segment selector
+    exception_panic("EXCEPTION: Invalid TSS", 0, true); 
+}
+
+void exception_handler_11(void) { 
+    // Segment not present - error code contains segment selector
+    exception_panic("EXCEPTION: Segment not present", 0, true); 
+}
+
+void exception_handler_12(void) { 
+    // Stack segment fault - error code contains segment selector
+    exception_panic("EXCEPTION: Stack segment fault", 0, true); 
+}
+
+void exception_handler_13(void) { 
+    // General protection fault - error code contains segment selector
+    exception_panic("EXCEPTION: General protection fault", 0, true); 
+}
+
+void exception_handler_14(void) { 
+    // Page fault - error code describes the fault
+    // Bit 0: Present (0 = not present, 1 = protection)
+    // Bit 1: Write (0 = read, 1 = write)
+    // Bit 2: User (0 = kernel, 1 = user)
+    // Bit 3: Reserved write (1 = reserved bit set)
+    // Bit 4: Instruction fetch (1 = instruction fetch)
+    uint64_t faulting_address;
+    asm volatile("mov %%cr2, %0" : "=r"(faulting_address));
+    console_puts("\n=== PAGE FAULT ===\n");
+    console_puts("Faulting address: 0x");
+    char hex[17];
+    for (int i = 15; i >= 0; i--) {
+        uint8_t digit = (faulting_address >> (i * 4)) & 0xF;
+        hex[15-i] = digit < 10 ? '0' + digit : 'A' + digit - 10;
+    }
+    hex[16] = '\0';
+    console_puts(hex);
+    exception_panic("\nEXCEPTION: Page fault", 0, true); 
+}
+
+void exception_handler_17(void) { 
+    // Alignment check - error code is always 0
+    exception_panic("EXCEPTION: Alignment check", 0, true); 
+}
 
 // =============================================================================
 // IRQ HANDLERS
@@ -200,94 +378,84 @@ void exception_handler_19(void) { console_puts("EXCEPTION: SIMD floating point\n
 void irq_handler_0(void) {
     // Timer interrupt - call scheduler tick
     scheduler_tick();
-    // Send EOI to PIC
-    outb(0x20, 0x20);
+    interrupt_send_eoi(IRQ_TIMER);
 }
 
 void irq_handler_1(void) {
     // Keyboard interrupt
     uint8_t scancode = inb(0x60);
-    // TODO: Implement keyboard scancode handling
+    // Keyboard scancode handling can be added here
     // keyboard_handle_scancode(scancode);
-    // Send EOI to PIC
-    outb(0x20, 0x20);
+    (void)scancode; // Suppress unused warning
+    interrupt_send_eoi(IRQ_KEYBOARD);
 }
 
 void irq_handler_2(void) {
     // Cascade - no action needed
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(2);
 }
 
 void irq_handler_3(void) {
     // COM2 - no action for now
-    outb(0x20, 0x20);
+    interrupt_send_eoi(3);
 }
 
 void irq_handler_4(void) {
     // COM1 - no action for now
-    outb(0x20, 0x20);
+    interrupt_send_eoi(4);
 }
 
 void irq_handler_5(void) {
     // LPT2 - no action for now
-    outb(0x20, 0x20);
+    interrupt_send_eoi(5);
 }
 
 void irq_handler_6(void) {
     // Floppy - no action for now
-    outb(0x20, 0x20);
+    interrupt_send_eoi(6);
 }
 
 void irq_handler_7(void) {
     // LPT1 - no action for now
-    outb(0x20, 0x20);
+    interrupt_send_eoi(7);
 }
 
 void irq_handler_8(void) {
     // RTC - no action for now
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(8);
 }
 
 void irq_handler_9(void) {
     // Free - no action
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(9);
 }
 
 void irq_handler_10(void) {
     // Free - no action
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(10);
 }
 
 void irq_handler_11(void) {
     // Free - no action
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(11);
 }
 
 void irq_handler_12(void) {
     // PS/2 mouse - no action for now
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(12);
 }
 
 void irq_handler_13(void) {
     // FPU - no action for now
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(13);
 }
 
 void irq_handler_14(void) {
     // Primary ATA - no action for now
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(14);
 }
 
 void irq_handler_15(void) {
     // Secondary ATA - no action for now
-    outb(0x20, 0x20);
-    outb(0xA0, 0x20);
+    interrupt_send_eoi(15);
 }
