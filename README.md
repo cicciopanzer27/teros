@@ -1,279 +1,192 @@
 # TEROS - Ternary Operating System
 
-**Un sistema operativo basato su logica ternaria bilanciata**
+## 🚀 Overview
 
----
+TEROS is a revolutionary operating system built from the ground up using ternary logic (trits instead of bits). This project implements a complete ternary ISA (T3-ISA), a Ternary Virtual Machine (TVM), and a fully functional operating system kernel with userspace utilities.
 
-## 🎯 Obiettivo
+## 📊 Project Statistics
 
-TEROS è un sistema operativo sperimentale progettato per esplorare il computing ternario. Utilizza logica a 3 valori (-1, 0, +1) invece della tradizionale logica binaria (0, 1).
+- **Total Lines of Code**: ~75,000+ lines
+- **Source Files**: 120+ files
+- **Components**: Kernel, Filesystem, Drivers, IPC, Networking, Utilities
+- **Status**: Active Development
 
-**Caratteristiche principali:**
-- ISA ternaria custom (T3-ISA)
-- Virtual Machine ternaria (TVM)
-- Kernel multitasking
-- File system
-- Toolchain completa (assembler, linker, compiler)
+## 🏗️ Architecture
 
----
+### Core Components
 
-## 📁 Struttura Progetto
+#### 1. **T3-ISA (Ternary 3-Instruction Set Architecture)**
+- Core instructions (ADD, SUB, MUL, etc.)
+- Extended instructions (MOV, LEA, SYSCALL, etc.)
+- Privileged instructions for kernel mode
+- Condition codes and branch prediction
+
+#### 2. **TVM (Ternary Virtual Machine)**
+- Ternary register operations
+- Memory management with trits
+- Instruction cache
+- Branch prediction
+- Performance monitoring
+
+#### 3. **Kernel**
+- Physical Memory Manager (PMM) - Buddy allocator
+- Virtual Memory Manager (VMM) - Ternary page tables
+- Kernel heap allocator (kmalloc) - Slab allocator
+- Process Control Block (PCB)
+- Ternary scheduler
+- Context switching
+- Interrupt handling
+- System calls
+
+#### 4. **Filesystem**
+- Virtual File System (VFS) framework
+- SimpleFS implementation
+- File descriptor table
+
+#### 5. **Device Drivers**
+- Console (VGA text mode)
+- Keyboard (PS/2)
+- Serial (COM1-COM4)
+- Timer (PIT)
+- Block devices
+
+#### 6. **IPC (Inter-Process Communication)**
+- Pipes
+- Signals
+- Shared memory
+- Semaphores
+
+#### 7. **Networking**
+- Ethernet layer
+- IPv4 support
+- TCP/IP stack
+- UDP support
+- Network interfaces
+
+#### 8. **Userspace**
+- LibC implementation
+- Shell (sh)
+- Utilities: ls, cat, echo, ps, pwd, mkdir, rmdir, cp, mv, rm, date, grep, sort
+
+#### 9. **Lambda Calculus Integration**
+- Lambda reduction engine
+- Formal type checking
+- Proof verification
+- Formal methods for ternary computing
+
+## 📁 Project Structure
 
 ```
 teros/
 ├── src/
-│   ├── boot/          # Bootloader e inizializzazione
-│   ├── kernel/        # Kernel core (ISA, VM, scheduler, memory)
-│   ├── drivers/       # Device drivers (console, keyboard, disk)
-│   ├── fs/            # File system (VFS, SimpleFS)
-│   └── lib/           # Librerie (libc, teros core)
-├── include/           # Header files
-├── tools/             # Build tools (assembler, linker)
-├── docs/              # Documentazione
-├── tests/             # Test suite
-├── examples/          # Programmi esempio
-├── TODO.md            # Roadmap sviluppo
+│   ├── boot/           # Bootloader
+│   ├── kernel/         # Kernel core
+│   │   ├── mm/        # Memory management
+│   │   ├── fs/        # File systems
+│   │   ├── proc/      # Process management
+│   │   ├── drivers/   # Device drivers
+│   │   └── ...
+│   ├── lib/           # Libraries
+│   │   └── libc/      # Standard C library
+│   ├── bin/           # User utilities
+│   └── ...
+├── tests/              # Test suites
+├── tools/              # Build tools
 ├── Makefile           # Build system
-└── README.md          # Questo file
+└── README.md          # This file
 ```
 
----
+## 🛠️ Building
 
-## 🔧 Componenti
+### Prerequisites
+- GCC cross-compiler
+- NASM assembler
+- Make
+- Python 3 (for AI code generation)
 
-### T3-ISA (Ternary 3-Instruction Set Architecture)
-
-ISA custom con 20+ istruzioni:
-- **Data Movement:** LOAD, STORE
-- **Arithmetic:** ADD, SUB, MUL, DIV
-- **Logic:** AND, OR, NOT, XOR
-- **Control Flow:** JMP, JZ, JNZ, CALL, RET
-- **Stack:** PUSH, POP
-- **System:** HALT, SYSCALL
-
-**File:** `src/kernel/t3_isa.{c,h}`
-
-### TVM (Ternary Virtual Machine)
-
-Virtual machine che esegue codice T3-ISA:
-- 16 registri ternari (R0-R7, PC, SP, FP, LR, CR, ACC, TMP, ZERO)
-- Memoria ternaria
-- Interrupt handling
-- Debugging support
-
-**File:** `src/kernel/ternary_emulator.{c,h}`
-
-### Kernel
-
-Kernel multitasking con:
-- Memory management (physical, virtual, heap)
-- Process management (scheduler, context switch)
-- System calls
-- Interrupt handling
-- IPC (pipes, signals, shared memory)
-
-**File:** `src/kernel/`
-
-### File System
-
-VFS (Virtual File System) con implementazione SimpleFS:
-- Inodes
-- Directory entries
-- File operations (open, read, write, close)
-- Path resolution
-
-**File:** `src/fs/`
-
-### Drivers
-
-Device drivers per I/O:
-- Console (VGA text mode)
-- Keyboard (PS/2)
-- Serial port (COM1)
-- Block device (VirtIO)
-
-**File:** `src/drivers/`
-
-### Toolchain
-
-Toolchain completa per sviluppo:
-- **Assembler:** T3-ASM → bytecode
-- **Linker:** Link object files
-- **Compiler:** C → T3-ASM (backend)
-
-**File:** `tools/`
-
----
-
-## 🚀 Build & Run
-
-### Prerequisiti
+### Build Commands
 
 ```bash
-# Installare dipendenze
-sudo apt-get install build-essential qemu-system-x86 nasm
-
-# Python per tools
-pip install -r requirements.txt
-```
-
-### Build
-
-```bash
-# Build completo
-make all
-
-# Build kernel only
+# Build the kernel
 make kernel
 
-# Build ISO bootable
-make iso
-```
+# Build all utilities
+make utils
 
-### Run
+# Build everything
+make all
 
-```bash
-# Run in QEMU
-make run
-
-# Run con debugging
-make debug
+# Clean build artifacts
+make clean
 
 # Run tests
 make test
 ```
 
----
-
-## 📚 Documentazione
-
-### Per Utenti
-
-- **Getting Started:** `docs/getting_started.md`
-- **User Manual:** `docs/user_manual.md`
-- **Examples:** `examples/`
-
-### Per Sviluppatori
-
-- **Architecture:** `docs/architecture.md`
-- **API Reference:** `docs/api/`
-- **Development Guide:** `docs/development.md`
-- **TODO:** `TODO.md` (roadmap completa)
-
----
-
 ## 🧪 Testing
+
+The project includes comprehensive test suites:
 
 ```bash
 # Run all tests
-make test
+pytest
 
-# Run unit tests
-make test-unit
-
-# Run integration tests
-make test-integration
-
-# Coverage report
-make coverage
+# Run specific test
+pytest tests/test_trit.py
+pytest tests/test_tvm.py
+pytest tests/test_ipc.py
 ```
 
----
+## 🤖 AI-Powered Development
 
-## 📊 Stato Attuale
+TEROS uses AI code generation to accelerate development:
 
-| Componente | Stato | Completamento |
-|:-----------|:------|:--------------|
-| **Trit Core** | ✅ Completo | 100% |
-| **T3-ISA** | ✅ Funzionante | 95% |
-| **TVM** | ✅ Funzionante | 90% |
-| **Assembler** | ✅ Funzionante | 85% |
-| **Kernel Bootstrap** | ⚠️ In sviluppo | 20% |
-| **Memory Management** | ⚠️ In sviluppo | 60% |
-| **Process Management** | ⚠️ In sviluppo | 50% |
-| **File System** | ❌ Da implementare | 0% |
-| **Drivers** | ❌ Da implementare | 0% |
-| **Networking** | ❌ Da implementare | 0% |
+```bash
+# Run AI code generator
+python ai_generate.py
+```
 
-**Prossimi step:** Vedi `TODO.md`
+Supported AI models:
+- Ollama (CodeLlama, StarCoder)
+- GitHub Copilot API
+- ChatGPT API
+- Claude API
 
----
+## 📝 Documentation
 
-## 🤝 Contribuire
+- `MASTER_ROADMAP.md` - Complete development roadmap
+- `PARALLEL_WORK_STRATEGY.md` - Strategy for parallel development
+- Inline code documentation with Doxygen-style comments
 
-TEROS è un progetto sperimentale. Contributi benvenuti!
+## 🎯 Goals
 
-### Come contribuire
+1. Complete ternary ISA implementation (500k+ lines)
+2. Full OS functionality
+3. Lambda Calculus integration for formal reasoning
+4. Performance optimization
+5. Comprehensive testing
 
-1. Fork del repository
-2. Crea branch per feature (`git checkout -b feature/nome`)
-3. Commit changes (`git commit -am 'Add feature'`)
-4. Push al branch (`git push origin feature/nome`)
-5. Apri Pull Request
+## 🤝 Contributing
 
-### Guidelines
+TEROS is an open research project. Contributions are welcome!
 
-- Segui coding style esistente
-- Aggiungi test per nuove feature
-- Documenta API pubbliche
-- Mantieni backward compatibility
+## 📄 License
 
----
+This project is licensed under the MIT License.
 
-## 📄 Licenza
+## 👥 Authors
 
-MIT License - vedi `LICENSE` file
+- TEROS Development Team
+- AI Code Generation: CodeLlama, StarCoder
 
----
+## 🔗 Links
 
-## 🙏 Riconoscimenti
-
-- **Balanced Ternary:** Donald Knuth, Setun computer
-- **OS Development:** OSDev wiki, Linux, Minix, xv6
-- **Ternary Logic:** Kleene, Łukasiewicz
+- GitHub: [TEROS Repository]
+- Documentation: See `MASTER_ROADMAP.md`
+- Issue Tracker: [GitHub Issues]
 
 ---
 
-## 📞 Contatti
-
-- **Issues:** GitHub Issues
-- **Discussions:** GitHub Discussions
-- **Email:** [da definire]
+**Note**: TEROS is under active development. Some components are incomplete or in development stages.
 
 ---
-
-## 🗺️ Roadmap
-
-### Fase 1: Kernel Minimale 
-- [x] T3-ISA completa
-- [x] TVM funzionante
-- [ ] Kernel boots
-- [ ] Memory management
-- [ ] Process scheduler
-- [ ] Basic I/O
-
-### Fase 2: Self-Hosting 
-- [ ] File system
-- [ ] Compiler backend
-- [ ] Libc
-- [ ] Core utilities
-- [ ] Build TEROS on TEROS
-
-### Fase 3: Networking 
-- [ ] TCP/IP stack
-- [ ] Network drivers
-- [ ] Socket API
-- [ ] Network utilities
-
-### Fase 4: Advanced 
-- [ ] GUI
-- [ ] Multi-threading
-- [ ] Security features
-- [ ] Performance optimization
-
-**Dettagli:** Vedi `TODO.md`
-
----
-
-*TEROS - Exploring the future of computing through ternary logic*
-

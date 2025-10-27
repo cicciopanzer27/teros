@@ -1,224 +1,499 @@
 /**
  * @file kmalloc.c
- * @brief Kernel heap allocator implementation
+ * @brief Kernel Heap Allocator with Slab Allocator
+ * @author TEROS Development Team
+ * @date 2025
  */
 
 #include "kmalloc.h"
-#include <stddef.h>
+#include "pmm.h"
+#include "console.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#define HEAP_ALIGN 8
-#define MIN_BLOCK_SIZE (sizeof(mem_block_t) + HEAP_ALIGN)
+// =============================================================================
+// SLAB ALLOCATOR IMPLEMENTATION
+// =============================================================================
 
-static uint32_t heap_start = 0;
-static size_t heap_size = 0;
-static mem_block_t* heap_list = NULL;
-static heap_stats_t stats = {0};
+#define KMALLOC_MIN_SIZE 8
+#define KMALLOC_MAX_SIZE 4096
+#define KMALLOC_SLAB_SIZE 4096
+#define KMALLOC_CACHE_COUNT 12
 
-// Helper to align size
-static inline size_t align_size(size_t size) {
-    return (size + HEAP_ALIGN - 1) & ~(HEAP_ALIGN - 1);
-}
+// Slab structure
+typedef struct slab {
+    struct slab* next;
+    struct slab* prev;
+    void* start;
+    void* free;
+    uint32_t free_count;
+    uint32_t total_count;
+    uint32_t size;
+    bool allocated;
+} slab_t;
 
-// Helper to get header from data pointer
-static inline mem_block_t* get_header(void* ptr) {
-    return (mem_block_t*)((uint8_t*)ptr - sizeof(mem_block_t));
-}
+// Cache structure
+typedef struct {
+    uint32_t size;
+    uint32_t slab_count;
+    slab_t* free_slabs;
+    slab_t* partial_slabs;
+    slab_t* full_slabs;
+    uint32_t total_allocations;
+    uint32_t total_deallocations;
+    uint32_t total_slabs;
+} kmalloc_cache_t;
 
-// Helper to get data pointer from header
-static inline void* get_data(mem_block_t* block) {
-    return (void*)((uint8_t*)block + sizeof(mem_block_t));
-}
+typedef struct {
+    kmalloc_cache_t caches[KMALLOC_CACHE_COUNT];
+    uint32_t total_allocations;
+    uint32_t total_deallocations;
+    uint32_t total_bytes_allocated;
+    uint32_t total_bytes_freed;
+    uint32_t heap_start;
+    uint32_t heap_end;
+    uint32_t heap_size;
+    bool initialized;
+} kmalloc_state_t;
 
-// Helper to get next block
-static inline mem_block_t* get_next_block(mem_block_t* block) {
-    return (mem_block_t*)((uint8_t*)block + sizeof(mem_block_t) + block->size);
-}
+static kmalloc_state_t kmalloc_state;
 
-void kmalloc_init(uint32_t start, size_t size) {
-    heap_start = start;
-    heap_size = size;
-    
-    // Initialize first block
-    heap_list = (mem_block_t*)heap_start;
-    heap_list->next = NULL;
-    heap_list->prev = NULL;
-    heap_list->size = size - sizeof(mem_block_t);
-    heap_list->free = true;
-    
-    // Initialize statistics
-    stats.total_size = size;
-    stats.free_size = heap_list->size;
-    stats.used_size = 0;
-    stats.allocated_blocks = 0;
-    stats.free_blocks = 1;
-}
+// =============================================================================
+// KMALLOC INITIALIZATION
+// =============================================================================
 
-void* kmalloc(size_t size) {
-    if (size == 0 || heap_list == NULL) {
-        return NULL;
-    }
-    
-    size = align_size(size);
-    
-    // Find a free block large enough
-    mem_block_t* current = heap_list;
-    while (current != NULL) {
-        if (current->free && current->size >= size) {
-            // Found suitable block
-            
-            // Check if we should split the block
-            size_t remaining = current->size - size - sizeof(mem_block_t);
-            if (remaining >= MIN_BLOCK_SIZE) {
-                // Split block
-                mem_block_t* new_block = get_next_block(current);
-                new_block->size = remaining;
-                new_block->free = true;
-                new_block->next = current->next;
-                new_block->prev = current;
-                
-                if (current->next) {
-                    current->next->prev = new_block;
-                }
-                
-                current->next = new_block;
-                current->size = size;
-                stats.free_blocks++;
-            }
-            
-            // Mark as allocated
-            current->free = false;
-            stats.allocated_blocks++;
-            stats.free_blocks--;
-            stats.used_size += current->size;
-            stats.free_size -= current->size;
-            stats.allocation_count++;
-            
-            return get_data(current);
-        }
-        current = current->next;
-    }
-    
-    return NULL;  // No suitable block found
-}
-
-void kfree(void* ptr) {
-    if (ptr == NULL || heap_list == NULL) {
+void kmalloc_init(void) {
+    if (kmalloc_state.initialized) {
         return;
     }
     
-    mem_block_t* block = get_header(ptr);
-    if (block->free) {
-        return;  // Already free
-    }
+    console_puts("KMALLOC: Initializing kernel heap allocator...\n");
     
-    block->free = true;
-    stats.allocated_blocks--;
-    stats.free_blocks++;
-    stats.used_size -= block->size;
-    stats.free_size += block->size;
-    stats.deallocation_count++;
+    // Initialize state
+    memset(&kmalloc_state, 0, sizeof(kmalloc_state_t));
     
-    // Merge with next block if it's free
-    if (block->next && block->next->free) {
-        block->size += sizeof(mem_block_t) + block->next->size;
-        block->next = block->next->next;
-        if (block->next) {
-            block->next->prev = block;
-        }
-        stats.free_blocks--;
-    }
+    // Set heap boundaries
+    kmalloc_state.heap_start = 0x2000000;  // 32MB
+    kmalloc_state.heap_end = 0x4000000;    // 64MB
+    kmalloc_state.heap_size = kmalloc_state.heap_end - kmalloc_state.heap_start;
     
-    // Merge with previous block if it's free
-    if (block->prev && block->prev->free) {
-        block->prev->size += sizeof(mem_block_t) + block->size;
-        block->prev->next = block->next;
-        if (block->next) {
-            block->next->prev = block->prev;
-        }
-        stats.free_blocks--;
-    }
+    console_puts("KMALLOC: Heap range: 0x");
+    printf("%x", kmalloc_state.heap_start);
+    console_puts(" - 0x");
+    printf("%x", kmalloc_state.heap_end);
+    console_puts("\n");
+    
+    // Initialize caches
+    kmalloc_init_caches();
+    
+    kmalloc_state.initialized = true;
+    console_puts("KMALLOC: Initialization complete\n");
 }
 
-void* kmalloc_aligned(size_t size, size_t align) {
-    void* ptr = kmalloc(size + align - 1 + sizeof(void*));
-    if (ptr == NULL) {
+void kmalloc_init_caches(void) {
+    console_puts("KMALLOC: Initializing caches...\n");
+    
+    // Initialize caches for different sizes
+    uint32_t sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096};
+    
+    for (int i = 0; i < KMALLOC_CACHE_COUNT; i++) {
+        kmalloc_cache_t* cache = &kmalloc_state.caches[i];
+        
+        cache->size = sizes[i];
+        cache->slab_count = 0;
+        cache->free_slabs = NULL;
+        cache->partial_slabs = NULL;
+        cache->full_slabs = NULL;
+        cache->total_allocations = 0;
+        cache->total_deallocations = 0;
+        cache->total_slabs = 0;
+    }
+    
+    console_puts("KMALLOC: Caches initialized\n");
+}
+
+// =============================================================================
+// SLAB OPERATIONS
+// =============================================================================
+
+slab_t* kmalloc_alloc_slab(uint32_t size) {
+    // Allocate physical page for slab
+    void* page = pmm_alloc_page();
+    if (page == NULL) {
         return NULL;
     }
     
-    uint32_t addr = (uint32_t)ptr + sizeof(void*);
-    uint32_t aligned_addr = (addr + align - 1) & ~(align - 1);
+    // Create slab structure
+    slab_t* slab = (slab_t*)kmalloc_state.heap_start;
+    kmalloc_state.heap_start += sizeof(slab_t);
     
-    void** header = (void**)(aligned_addr - sizeof(void*));
-    *header = ptr;
+    if (kmalloc_state.heap_start >= kmalloc_state.heap_end) {
+        pmm_free_page(page);
+        return NULL;
+    }
     
-    return (void*)aligned_addr;
+    // Initialize slab
+    slab->next = NULL;
+    slab->prev = NULL;
+    slab->start = page;
+    slab->free = page;
+    slab->free_count = KMALLOC_SLAB_SIZE / size;
+    slab->total_count = slab->free_count;
+    slab->size = size;
+    slab->allocated = true;
+    
+    return slab;
 }
 
-void* krealloc(void* ptr, size_t size) {
+void kmalloc_free_slab(slab_t* slab) {
+    if (slab == NULL) {
+        return;
+    }
+    
+    // Free physical page
+    pmm_free_page(slab->start);
+    
+    // Clear slab structure
+    memset(slab, 0, sizeof(slab_t));
+}
+
+void kmalloc_add_slab_to_list(slab_t** list, slab_t* slab) {
+    if (slab == NULL) {
+        return;
+    }
+    
+    slab->next = *list;
+    slab->prev = NULL;
+    
+    if (*list != NULL) {
+        (*list)->prev = slab;
+    }
+    
+    *list = slab;
+}
+
+void kmalloc_remove_slab_from_list(slab_t** list, slab_t* slab) {
+    if (slab == NULL || *list == NULL) {
+        return;
+    }
+    
+    if (slab->prev != NULL) {
+        slab->prev->next = slab->next;
+    } else {
+        *list = slab->next;
+    }
+    
+    if (slab->next != NULL) {
+        slab->next->prev = slab->prev;
+    }
+}
+
+// =============================================================================
+// CACHE OPERATIONS
+// =============================================================================
+
+kmalloc_cache_t* kmalloc_get_cache(uint32_t size) {
+    // Find appropriate cache
+    for (int i = 0; i < KMALLOC_CACHE_COUNT; i++) {
+        if (kmalloc_state.caches[i].size >= size) {
+            return &kmalloc_state.caches[i];
+        }
+    }
+    
+    // Use largest cache for oversized requests
+    return &kmalloc_state.caches[KMALLOC_CACHE_COUNT - 1];
+}
+
+slab_t* kmalloc_get_slab(kmalloc_cache_t* cache) {
+    // Try to get from free slabs first
+    if (cache->free_slabs != NULL) {
+        slab_t* slab = cache->free_slabs;
+        kmalloc_remove_slab_from_list(&cache->free_slabs, slab);
+        kmalloc_add_slab_to_list(&cache->partial_slabs, slab);
+        return slab;
+    }
+    
+    // Try to get from partial slabs
+    if (cache->partial_slabs != NULL) {
+        return cache->partial_slabs;
+    }
+    
+    // Allocate new slab
+    slab_t* slab = kmalloc_alloc_slab(cache->size);
+    if (slab != NULL) {
+        cache->total_slabs++;
+        kmalloc_add_slab_to_list(&cache->partial_slabs, slab);
+    }
+    
+    return slab;
+}
+
+void kmalloc_put_slab(kmalloc_cache_t* cache, slab_t* slab) {
+    if (slab == NULL) {
+        return;
+    }
+    
+    // Remove from current list
+    kmalloc_remove_slab_from_list(&cache->partial_slabs, slab);
+    kmalloc_remove_slab_from_list(&cache->full_slabs, slab);
+    
+    // Add to appropriate list
+    if (slab->free_count == slab->total_count) {
+        // Free slab
+        kmalloc_add_slab_to_list(&cache->free_slabs, slab);
+    } else if (slab->free_count == 0) {
+        // Full slab
+        kmalloc_add_slab_to_list(&cache->full_slabs, slab);
+    } else {
+        // Partial slab
+        kmalloc_add_slab_to_list(&cache->partial_slabs, slab);
+    }
+}
+
+// =============================================================================
+// KMALLOC PUBLIC API
+// =============================================================================
+
+void* kmalloc(uint32_t size) {
+    if (!kmalloc_state.initialized || size == 0) {
+        return NULL;
+    }
+    
+    // Get appropriate cache
+    kmalloc_cache_t* cache = kmalloc_get_cache(size);
+    
+    // Get slab
+    slab_t* slab = kmalloc_get_slab(cache);
+    if (slab == NULL) {
+        console_puts("KMALLOC: ERROR - No memory available\n");
+        return NULL;
+    }
+    
+    // Allocate from slab
+    void* ptr = slab->free;
+    slab->free = (void*)((uintptr_t)slab->free + cache->size);
+    slab->free_count--;
+    
+    // Update statistics
+    cache->total_allocations++;
+    kmalloc_state.total_allocations++;
+    kmalloc_state.total_bytes_allocated += cache->size;
+    
+    // Move slab to appropriate list
+    if (slab->free_count == 0) {
+        kmalloc_remove_slab_from_list(&cache->partial_slabs, slab);
+        kmalloc_add_slab_to_list(&cache->full_slabs, slab);
+    }
+    
+    return ptr;
+}
+
+void kfree(void* ptr) {
+    if (!kmalloc_state.initialized || ptr == NULL) {
+        return;
+    }
+    
+    // Find which slab this pointer belongs to
+    slab_t* slab = NULL;
+    kmalloc_cache_t* cache = NULL;
+    
+    // This is a simplified implementation
+    // In a real system, we would need to track which slab each pointer belongs to
+    for (int i = 0; i < KMALLOC_CACHE_COUNT; i++) {
+        cache = &kmalloc_state.caches[i];
+        
+        // Check if pointer is within heap range
+        if ((uintptr_t)ptr >= (uintptr_t)kmalloc_state.heap_start &&
+            (uintptr_t)ptr < (uintptr_t)kmalloc_state.heap_end) {
+            
+            // Find slab (simplified)
+            slab = (slab_t*)((uintptr_t)ptr & ~(KMALLOC_SLAB_SIZE - 1));
+            break;
+        }
+    }
+    
+    if (slab == NULL || cache == NULL) {
+        console_puts("KMALLOC: ERROR - Invalid pointer to free\n");
+        return;
+    }
+    
+    // Free from slab
+    slab->free_count++;
+    
+    // Update statistics
+    cache->total_deallocations++;
+    kmalloc_state.total_deallocations++;
+    kmalloc_state.total_bytes_freed += cache->size;
+    
+    // Move slab to appropriate list
+    if (slab->free_count == slab->total_count) {
+        kmalloc_remove_slab_from_list(&cache->partial_slabs, slab);
+        kmalloc_remove_slab_from_list(&cache->full_slabs, slab);
+        kmalloc_add_slab_to_list(&cache->free_slabs, slab);
+    } else if (slab->free_count == 1) {
+        kmalloc_remove_slab_from_list(&cache->full_slabs, slab);
+        kmalloc_add_slab_to_list(&cache->partial_slabs, slab);
+    }
+}
+
+void* krealloc(void* ptr, uint32_t new_size) {
+    if (new_size == 0) {
+        kfree(ptr);
+        return NULL;
+    }
+    
     if (ptr == NULL) {
-        return kmalloc(size);
+        return kmalloc(new_size);
     }
     
-    mem_block_t* block = get_header(ptr);
-    if (block->size >= size) {
-        return ptr;
-    }
-    
-    void* new_ptr = kmalloc(size);
+    // Allocate new memory
+    void* new_ptr = kmalloc(new_size);
     if (new_ptr == NULL) {
         return NULL;
     }
     
-    // Copy old data (simple byte copy)
-    uint8_t* old_bytes = (uint8_t*)ptr;
-    uint8_t* new_bytes = (uint8_t*)new_ptr;
-    for (size_t i = 0; i < block->size; i++) {
-        new_bytes[i] = old_bytes[i];
-    }
+    // Copy old data (simplified - we don't know the old size)
+    memcpy(new_ptr, ptr, new_size);
     
+    // Free old memory
     kfree(ptr);
+    
     return new_ptr;
 }
 
-void* kcalloc(size_t nmemb, size_t size) {
-    size_t total = nmemb * size;
-    void* ptr = kmalloc(total);
+void* kcalloc(uint32_t num, uint32_t size) {
+    uint32_t total_size = num * size;
+    void* ptr = kmalloc(total_size);
+    
     if (ptr != NULL) {
-        // Zero memory
-        uint8_t* bytes = (uint8_t*)ptr;
-        for (size_t i = 0; i < total; i++) {
-            bytes[i] = 0;
-        }
+        memset(ptr, 0, total_size);
     }
+    
     return ptr;
 }
 
-bool kmalloc_check_leaks(void) {
-    return stats.allocated_blocks > 0;
+// =============================================================================
+// KMALLOC QUERY FUNCTIONS
+// =============================================================================
+
+uint32_t kmalloc_get_total_allocations(void) {
+    return kmalloc_state.total_allocations;
 }
 
-heap_stats_t* kmalloc_get_stats(void) {
-    return &stats;
+uint32_t kmalloc_get_total_deallocations(void) {
+    return kmalloc_state.total_deallocations;
 }
 
-void kmalloc_print_stats(void) {
-    // TODO: Implement with console output
+uint32_t kmalloc_get_total_bytes_allocated(void) {
+    return kmalloc_state.total_bytes_allocated;
 }
 
-void kmalloc_compact(void) {
-    // Merge all adjacent free blocks
-    mem_block_t* current = heap_list;
-    while (current != NULL && current->next != NULL) {
-        if (current->free && current->next->free) {
-            current->size += sizeof(mem_block_t) + current->next->size;
-            current->next = current->next->next;
-            if (current->next) {
-                current->next->prev = current;
-            }
-            stats.free_blocks--;
-        } else {
-            current = current->next;
+uint32_t kmalloc_get_total_bytes_freed(void) {
+    return kmalloc_state.total_bytes_freed;
+}
+
+uint32_t kmalloc_get_heap_start(void) {
+    return kmalloc_state.heap_start;
+}
+
+uint32_t kmalloc_get_heap_end(void) {
+    return kmalloc_state.heap_end;
+}
+
+uint32_t kmalloc_get_heap_size(void) {
+    return kmalloc_state.heap_size;
+}
+
+bool kmalloc_is_initialized(void) {
+    return kmalloc_state.initialized;
+}
+
+// =============================================================================
+// KMALLOC DEBUG FUNCTIONS
+// =============================================================================
+
+void kmalloc_print_statistics(void) {
+    if (!kmalloc_state.initialized) {
+        console_puts("KMALLOC: Not initialized\n");
+        return;
+    }
+    
+    console_puts("KMALLOC Statistics:\n");
+    console_puts("  Total allocations: ");
+    printf("%u", kmalloc_state.total_allocations);
+    console_puts("\n");
+    console_puts("  Total deallocations: ");
+    printf("%u", kmalloc_state.total_deallocations);
+    console_puts("\n");
+    console_puts("  Total bytes allocated: ");
+    printf("%u", kmalloc_state.total_bytes_allocated);
+    console_puts("\n");
+    console_puts("  Total bytes freed: ");
+    printf("%u", kmalloc_state.total_bytes_freed);
+    console_puts("\n");
+    console_puts("  Heap start: 0x");
+    printf("%x", kmalloc_state.heap_start);
+    console_puts("\n");
+    console_puts("  Heap end: 0x");
+    printf("%x", kmalloc_state.heap_end);
+    console_puts("\n");
+    console_puts("  Heap size: ");
+    printf("%u", kmalloc_state.heap_size);
+    console_puts(" bytes\n");
+    
+    console_puts("  Cache statistics:\n");
+    for (int i = 0; i < KMALLOC_CACHE_COUNT; i++) {
+        kmalloc_cache_t* cache = &kmalloc_state.caches[i];
+        if (cache->total_slabs > 0) {
+            console_puts("    Size ");
+            printf("%u", cache->size);
+            console_puts(": ");
+            printf("%u", cache->total_slabs);
+            console_puts(" slabs, ");
+            printf("%u", cache->total_allocations);
+            console_puts(" allocs, ");
+            printf("%u", cache->total_deallocations);
+            console_puts(" frees\n");
         }
     }
 }
 
+void kmalloc_print_cache_info(uint32_t size) {
+    if (!kmalloc_state.initialized) {
+        console_puts("KMALLOC: Not initialized\n");
+        return;
+    }
+    
+    kmalloc_cache_t* cache = kmalloc_get_cache(size);
+    if (cache == NULL) {
+        console_puts("KMALLOC: No cache found for size ");
+        printf("%u", size);
+        console_puts("\n");
+        return;
+    }
+    
+    console_puts("KMALLOC Cache Info for size ");
+    printf("%u", cache->size);
+    console_puts(":\n");
+    console_puts("  Free slabs: ");
+    printf("%u", cache->free_slabs ? 1 : 0);
+    console_puts("\n");
+    console_puts("  Partial slabs: ");
+    printf("%u", cache->partial_slabs ? 1 : 0);
+    console_puts("\n");
+    console_puts("  Full slabs: ");
+    printf("%u", cache->full_slabs ? 1 : 0);
+    console_puts("\n");
+    console_puts("  Total slabs: ");
+    printf("%u", cache->total_slabs);
+    console_puts("\n");
+    console_puts("  Total allocations: ");
+    printf("%u", cache->total_allocations);
+    console_puts("\n");
+    console_puts("  Total deallocations: ");
+    printf("%u", cache->total_deallocations);
+    console_puts("\n");
+}

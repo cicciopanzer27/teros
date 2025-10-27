@@ -1,6 +1,6 @@
 /**
  * @file pmm.h
- * @brief Physical Memory Manager for TEROS Dashboard
+ * @brief Physical Memory Manager (PMM) Header
  * @author TEROS Development Team
  * @date 2025
  */
@@ -9,144 +9,120 @@
 #define PMM_H
 
 #include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
 
-// Memory page size (4KB standard)
-#define PMM_PAGE_SIZE    4096
-#define PMM_BITS_PER_INT 32
-
-// Memory regions
-#define PMM_REGION_KERNEL_START 0x00100000  // 1MB
-#define PMM_REGION_KERNEL_END   0x01000000  // 16MB
-#define PMM_REGION_USER_START   0x01000000  // 16MB
-#define PMM_REGION_USER_END     0xFFFFFFFF  // 4GB
-
 // =============================================================================
-// MEMORY ALLOCATION STRUCTURES
+// PMM CONSTANTS
 // =============================================================================
 
-// Page frame structure
-typedef struct pmm_page {
-    struct pmm_page* next;
-    uint32_t frame_number;
-    bool allocated;
-    uint32_t reference_count;
-} pmm_page_t;
-
-// Memory region descriptor
-typedef struct {
-    uint64_t base_address;
-    uint64_t length;
-    uint32_t type;           // 1=available, 2=reserved, etc.
-    uint32_t acpi_attribute;
-} mem_region_t;
-
-// PMM state structure
-typedef struct {
-    uint32_t total_frames;
-    uint32_t free_frames;
-    uint32_t used_frames;
-    uint32_t bitmap_size;
-    uint32_t* bitmap;
-    mem_region_t* regions;
-    uint32_t region_count;
-    bool initialized;
-} pmm_state_t;
+#define PMM_PAGE_SIZE 4096      // 4KB pages
+#define PMM_MAX_ORDER 20        // Maximum order (1MB blocks)
+#define PMM_MIN_ORDER 0         // Minimum order (4KB blocks)
 
 // =============================================================================
-// PHYSICAL MEMORY MANAGER API
+// PMM INITIALIZATION
 // =============================================================================
 
 /**
  * @brief Initialize Physical Memory Manager
- * @param mem_upper Upper memory limit in KB
  */
-void pmm_init(uint32_t mem_upper);
-
-/**
- * @brief Allocate a page frame
- * @return Physical address of allocated page, or 0 on failure
- */
-uint32_t pmm_alloc_page(void);
-
-/**
- * @brief Free a page frame
- * @param phys_addr Physical address to free
- */
-void pmm_free_page(uint32_t phys_addr);
-
-/**
- * @brief Allocate multiple contiguous page frames
- * @param count Number of pages to allocate
- * @return Physical address of first allocated page, or 0 on failure
- */
-uint32_t pmm_alloc_pages(uint32_t count);
-
-/**
- * @brief Free multiple contiguous page frames
- * @param phys_addr Physical address of first page
- * @param count Number of pages to free
- */
-void pmm_free_pages(uint32_t phys_addr, uint32_t count);
-
-/**
- * @brief Mark page as used (don't allocate)
- * @param phys_addr Physical address to mark
- */
-void pmm_mark_used(uint32_t phys_addr);
-
-/**
- * @brief Mark page as free (available for allocation)
- * @param phys_addr Physical address to mark
- */
-void pmm_mark_free(uint32_t phys_addr);
-
-/**
- * @brief Check if page is allocated
- * @param phys_addr Physical address to check
- * @return true if allocated, false otherwise
- */
-bool pmm_is_allocated(uint32_t phys_addr);
+void pmm_init(void);
 
 // =============================================================================
-// MEMORY STATISTICS
+// PMM ALLOCATION FUNCTIONS
 // =============================================================================
 
 /**
- * @brief Get total available frames
- * @return Total number of frames
+ * @brief Allocate a single page
+ * @return Physical address of allocated page, or NULL on failure
  */
-uint32_t pmm_get_total_frames(void);
+void* pmm_alloc_page(void);
 
 /**
- * @brief Get number of free frames
- * @return Number of free frames
+ * @brief Allocate multiple pages
+ * @param num_pages Number of pages to allocate
+ * @return Physical address of allocated pages, or NULL on failure
  */
-uint32_t pmm_get_free_frames(void);
+void* pmm_alloc_pages(uint32_t num_pages);
 
 /**
- * @brief Get number of used frames
- * @return Number of used frames
+ * @brief Free a single page
+ * @param address Physical address of page to free
  */
-uint32_t pmm_get_used_frames(void);
+void pmm_free_page(void* address);
 
 /**
- * @brief Get memory usage percentage
- * @return Usage percentage (0-100)
+ * @brief Free multiple pages
+ * @param address Physical address of pages to free
+ * @param num_pages Number of pages to free
  */
-uint32_t pmm_get_usage_percent(void);
+void pmm_free_pages(void* address, uint32_t num_pages);
+
+// =============================================================================
+// PMM QUERY FUNCTIONS
+// =============================================================================
+
+/**
+ * @brief Get total number of pages
+ * @return Total pages
+ */
+uint32_t pmm_get_total_pages(void);
+
+/**
+ * @brief Get number of free pages
+ * @return Free pages
+ */
+uint32_t pmm_get_free_pages(void);
+
+/**
+ * @brief Get number of allocated pages
+ * @return Allocated pages
+ */
+uint32_t pmm_get_allocated_pages(void);
+
+/**
+ * @brief Get number of reserved pages
+ * @return Reserved pages
+ */
+uint32_t pmm_get_reserved_pages(void);
+
+/**
+ * @brief Get memory start address
+ * @return Memory start address
+ */
+uint32_t pmm_get_memory_start(void);
+
+/**
+ * @brief Get memory end address
+ * @return Memory end address
+ */
+uint32_t pmm_get_memory_end(void);
+
+/**
+ * @brief Check if a page is allocated
+ * @param physical_address Physical address to check
+ * @return true if page is allocated
+ */
+bool pmm_is_page_allocated(uint32_t physical_address);
+
+/**
+ * @brief Check if PMM is initialized
+ * @return true if initialized
+ */
+bool pmm_is_initialized(void);
+
+// =============================================================================
+// PMM DEBUG FUNCTIONS
+// =============================================================================
 
 /**
  * @brief Print PMM statistics
  */
-void pmm_print_stats(void);
+void pmm_print_statistics(void);
 
 /**
- * @brief Get PMM state
- * @return Pointer to PMM state structure
+ * @brief Print memory map
  */
-pmm_state_t* pmm_get_state(void);
+void pmm_print_memory_map(void);
 
 #endif // PMM_H
-

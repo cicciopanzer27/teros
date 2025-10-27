@@ -39,26 +39,50 @@
 #define T3_REGISTER_ZERO 15  // Zero register
 
 // Opcodes
-#define T3_OPCODE_LOAD  0
-#define T3_OPCODE_STORE 1
-#define T3_OPCODE_ADD   2
-#define T3_OPCODE_SUB   3
-#define T3_OPCODE_MUL   4
-#define T3_OPCODE_DIV   5
-#define T3_OPCODE_AND   6
-#define T3_OPCODE_OR    7
-#define T3_OPCODE_NOT   8
-#define T3_OPCODE_XOR   9
-#define T3_OPCODE_CMP   10
-#define T3_OPCODE_JMP   11
-#define T3_OPCODE_JZ    12
-#define T3_OPCODE_JNZ   13
-#define T3_OPCODE_CALL  14
-#define T3_OPCODE_RET   15
-#define T3_OPCODE_PUSH  16
-#define T3_OPCODE_POP   17
-#define T3_OPCODE_HALT  18
-#define T3_OPCODE_NOP   19
+#define T3_OPCODE_LOAD   0
+#define T3_OPCODE_STORE  1
+#define T3_OPCODE_ADD    2
+#define T3_OPCODE_SUB    3
+#define T3_OPCODE_MUL    4
+#define T3_OPCODE_DIV    5
+#define T3_OPCODE_AND    6
+#define T3_OPCODE_OR     7
+#define T3_OPCODE_NOT    8
+#define T3_OPCODE_XOR    9
+#define T3_OPCODE_CMP    10
+#define T3_OPCODE_JMP    11
+#define T3_OPCODE_JZ     12
+#define T3_OPCODE_JNZ    13
+#define T3_OPCODE_CALL   14
+#define T3_OPCODE_RET    15
+#define T3_OPCODE_PUSH   16
+#define T3_OPCODE_POP    17
+#define T3_OPCODE_HALT   18
+#define T3_OPCODE_NOP    19
+// Extended opcodes
+#define T3_OPCODE_SYSCALL 20
+#define T3_OPCODE_IRET    21
+#define T3_OPCODE_CLI     22
+#define T3_OPCODE_STI     23
+#define T3_OPCODE_CPUID   24
+#define T3_OPCODE_RDTSC   25
+#define T3_OPCODE_INT     26
+#define T3_OPCODE_MOV     27
+#define T3_OPCODE_LEA     28
+#define T3_OPCODE_TST     29
+
+// Privilege levels
+#define T3_PRIVILEGE_RING0 0  // Kernel mode
+#define T3_PRIVILEGE_RING1 1  // Supervisor mode
+#define T3_PRIVILEGE_RING2 2  // User mode
+
+// Condition codes
+#define T3_CC_EQ  0  // Equal (Zero flag)
+#define T3_CC_NE  1  // Not Equal
+#define T3_CC_LT  2  // Less Than (Negative flag)
+#define T3_CC_LE  3  // Less or Equal
+#define T3_CC_GT  4  // Greater Than
+#define T3_CC_GE  5  // Greater or Equal
 
 // =============================================================================
 // T3-ISA STRUCTURES
@@ -176,6 +200,21 @@ trit_t t3_execute_pop(t3_instruction_t* instruction, t3_register_t* registers);
 // =============================================================================
 
 trit_t t3_execute_halt(t3_instruction_t* instruction, t3_register_t* registers);
+
+// =============================================================================
+// T3-ISA EXTENDED INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_syscall(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_iret(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_cli(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_sti(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_cpuid(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_rdtsc(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_int(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_mov(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_lea(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_tst(t3_instruction_t* instruction, t3_register_t* registers);
 
 // =============================================================================
 // T3-ISA UTILITY FUNCTIONS

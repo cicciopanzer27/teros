@@ -1,6 +1,6 @@
 /**
  * @file process.h
- * @brief Process Control Block (PCB) and process management
+ * @brief Process Control Block (PCB) Header
  * @author TEROS Development Team
  * @date 2025
  */
@@ -10,206 +10,207 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
-
-// Process states (ternary values)
-#define PROCESS_STATE_RUNNING  1
-#define PROCESS_STATE_READY    0
-#define PROCESS_STATE_BLOCKED  -1
-#define PROCESS_STATE_ZOMBIE   -2
-#define PROCESS_STATE_NEW      2
-
-// Priority levels (ternary)
-#define PRIORITY_LOW    -1
-#define PRIORITY_NORMAL 0
-#define PRIORITY_HIGH   1
-
-// Process ID
-typedef uint32_t pid_t;
 
 // =============================================================================
-// PROCESS CONTROL BLOCK STRUCTURE
+// PROCESS CONSTANTS
 // =============================================================================
 
-// Register context for TVM
-typedef struct {
-    uint32_t r0, r1, r2, r3, r4, r5, r6, r7;  // General purpose registers
-    uint32_t pc;   // Program counter
-    uint32_t sp;   // Stack pointer
-    uint32_t fp;   // Frame pointer
-    uint32_t lr;   // Link register
-    uint32_t cr;   // Condition register
-    uint32_t acc;  // Accumulator
-    uint32_t tmp;  // Temporary
-    uint32_t zero; // Zero register
-    uint32_t flags; // Flags register
-} process_context_t;
+#define MAX_PROCESSES 1024
+#define MAX_PROCESS_NAME 64
+#define MAX_PROCESS_ARGS 16
+#define MAX_PROCESS_ENV 32
 
-// Process Control Block
-typedef struct process {
-    pid_t pid;
-    pid_t ppid;                    // Parent PID
-    int32_t state;                 // Process state (ternary)
-    int32_t priority;              // Priority (ternary)
-    
-    // Context
-    process_context_t context;
-    uint32_t kernel_stack;         // Kernel stack pointer
-    uint32_t user_stack;           // User stack pointer
-    uint32_t heap_base;            // Heap base address
-    uint32_t heap_size;            // Heap size
-    uint32_t code_base;            // Code base address
-    uint32_t code_size;            // Code size
-    
-    // Memory management
-    void* page_directory;          // Page directory (for VMM)
-    uint32_t allocated_pages;      // Number of allocated pages
-    
-    // File descriptors
-    void* file_descriptors[64];    // FD table (simplified)
-    uint32_t fd_count;
-    
-    // IPC
-    void* ipc_channels;            // IPC channels
-    void* shared_memory;           // Shared memory regions
-    
-    // Timing
-    uint32_t ticks_total;          // Total CPU ticks
-    uint32_t ticks_recent;         // Recent CPU ticks
-    uint32_t created_time;         // Creation timestamp
-    uint32_t sleep_until;          // Wake time for sleeping processes
-    
-    // Security
-    uint32_t uid;                  // User ID
-    uint32_t gid;                  // Group ID
-    uint32_t capabilities;         // Capabilities bitmap
-    
-    // Process tree
-    struct process* parent;
-    struct process* children;
-    struct process* sibling;
-    
-    // Scheduling
-    struct process* next;          // Next process in queue
-    struct process* prev;          // Previous process in queue
-    
-    // Stats
-    uint32_t context_switches;     // Number of context switches
-    uint32_t syscalls_count;       // Number of syscalls made
-} process_t;
+// Process states (ternary)
+typedef enum {
+    PROCESS_STATE_RUNNING = 1,    // Positive (1)
+    PROCESS_STATE_READY = 0,       // Zero (0)
+    PROCESS_STATE_BLOCKED = -1    // Negative (-1)
+} process_state_t;
+
+// Process structure (forward declaration)
+typedef struct process process_t;
 
 // =============================================================================
-// PROCESS MANAGEMENT API
+// PROCESS INITIALIZATION
 // =============================================================================
 
 /**
- * @brief Initialize process management system
+ * @brief Initialize Process Manager
  */
 void process_init(void);
 
+// =============================================================================
+// PROCESS CREATION AND DESTRUCTION
+// =============================================================================
+
 /**
  * @brief Create a new process
- * @param code_address Code start address
- * @param code_size Code size in bytes
- * @param priority Process priority
+ * @param name Process name
+ * @param ppid Parent process ID
  * @return Pointer to created process, or NULL on failure
  */
-process_t* process_create(uint32_t code_address, uint32_t code_size, int32_t priority);
+process_t* process_create(const char* name, uint32_t ppid);
 
 /**
- * @brief Terminate a process
- * @param process Process to terminate
- * @return Exit code
+ * @brief Destroy a process
+ * @param proc Process to destroy
  */
-int32_t process_terminate(process_t* process);
+void process_destroy(process_t* proc);
+
+// =============================================================================
+// PROCESS STATE MANAGEMENT
+// =============================================================================
 
 /**
- * @brief Destroy process and free resources
- * @param process Process to destroy
+ * @brief Set process state
+ * @param proc Process
+ * @param state New state
  */
-void process_destroy(process_t* process);
+void process_set_state(process_t* proc, process_state_t state);
 
 /**
- * @brief Get current running process
+ * @brief Get process state
+ * @param proc Process
+ * @return Process state
+ */
+process_state_t process_get_state(process_t* proc);
+
+/**
+ * @brief Set process priority
+ * @param proc Process
+ * @param priority Priority (-1, 0, 1)
+ */
+void process_set_priority(process_t* proc, int32_t priority);
+
+/**
+ * @brief Get process priority
+ * @param proc Process
+ * @return Process priority
+ */
+int32_t process_get_priority(process_t* proc);
+
+// =============================================================================
+// PROCESS QUERY FUNCTIONS
+// =============================================================================
+
+/**
+ * @brief Find process by PID
+ * @param pid Process ID
+ * @return Pointer to process, or NULL if not found
+ */
+process_t* process_find_by_pid(uint32_t pid);
+
+/**
+ * @brief Get current process
  * @return Pointer to current process
  */
 process_t* process_get_current(void);
 
 /**
- * @brief Get process by PID
- * @param pid Process ID
- * @return Pointer to process, or NULL if not found
+ * @brief Set current process
+ * @param proc Process to set as current
  */
-process_t* process_get_by_pid(pid_t pid);
+void process_set_current(process_t* proc);
 
 /**
- * @brief Switch to a different process
- * @param new_process Process to switch to
+ * @brief Get total process count
+ * @return Number of processes
  */
-void process_switch(process_t* new_process);
+uint32_t process_get_count(void);
 
 /**
- * @brief Block current process
+ * @brief Get next PID
+ * @return Next PID
  */
-void process_block(void);
+uint32_t process_get_next_pid(void);
+
+// =============================================================================
+// PROCESS EXECUTION
+// =============================================================================
 
 /**
- * @brief Unblock a process
- * @param process Process to unblock
+ * @brief Load program into process
+ * @param proc Process
+ * @param filename Program filename
+ * @return true if successful
  */
-void process_unblock(process_t* process);
+bool process_load_program(process_t* proc, const char* filename);
 
 /**
- * @brief Sleep for specified ticks
- * @param ticks Number of ticks to sleep
+ * @brief Execute process
+ * @param proc Process
+ * @return true if successful
  */
-void process_sleep(uint32_t ticks);
+bool process_execute(process_t* proc);
+
+// =============================================================================
+// PROCESS TERMINATION
+// =============================================================================
 
 /**
- * @brief Wake up processes that are ready
+ * @brief Terminate process
+ * @param proc Process
+ * @param exit_code Exit code
  */
-void process_wakeup(void);
+void process_terminate(process_t* proc, uint32_t exit_code);
 
 /**
- * @brief Set process priority
- * @param process Process to modify
- * @param priority New priority
+ * @brief Check if process is terminated
+ * @param proc Process
+ * @return true if terminated
  */
-void process_set_priority(process_t* process, int32_t priority);
+bool process_is_terminated(process_t* proc);
 
 /**
- * @brief Get process state
- * @param process Process to query
- * @return Process state
+ * @brief Get process exit code
+ * @param proc Process
+ * @return Exit code
  */
-int32_t process_get_state(process_t* process);
+uint32_t process_get_exit_code(process_t* proc);
+
+// =============================================================================
+// PROCESS SIGNALS
+// =============================================================================
 
 /**
- * @brief Add process to ready queue
- * @param process Process to add
+ * @brief Send signal to process
+ * @param proc Process
+ * @param signal Signal number
  */
-void process_add_to_queue(process_t* process);
+void process_send_signal(process_t* proc, uint32_t signal);
 
 /**
- * @brief Remove process from queue
- * @param process Process to remove
+ * @brief Handle pending signals
+ * @param proc Process
  */
-void process_remove_from_queue(process_t* process);
+void process_handle_signals(process_t* proc);
+
+/**
+ * @brief Handle specific signal
+ * @param proc Process
+ * @param signal Signal number
+ */
+void process_handle_signal(process_t* proc, uint32_t signal);
+
+// =============================================================================
+// PROCESS DEBUG FUNCTIONS
+// =============================================================================
 
 /**
  * @brief Print process information
- * @param process Process to print
+ * @param proc Process
  */
-void process_print_info(process_t* process);
+void process_print_info(process_t* proc);
 
 /**
  * @brief Print all processes
  */
 void process_print_all(void);
 
-// Global variables (extern)
-extern process_t* current_process;
-extern process_t* ready_queue;
+/**
+ * @brief Check if process manager is initialized
+ * @return true if initialized
+ */
+bool process_is_initialized(void);
 
 #endif // PROCESS_H
-

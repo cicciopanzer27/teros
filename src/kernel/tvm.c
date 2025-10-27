@@ -29,6 +29,26 @@ tvm_t* tvm_create(size_t memory_size) {
         return NULL;
     }
     
+    // Initialize instruction cache (64 entries, direct-mapped)
+    vm->icache_size = 64;
+    vm->icache_mask = 0x3F; // 64-1
+    vm->icache = calloc(vm->icache_size, sizeof(icache_entry_t));
+    if (vm->icache == NULL) {
+        free(vm->memory);
+        free(vm);
+        return NULL;
+    }
+    
+    // Initialize branch predictor (256 entries)
+    vm->bp_table_size = 256;
+    vm->bp_table = calloc(vm->bp_table_size, sizeof(branch_predictor_t));
+    if (vm->bp_table == NULL) {
+        free(vm->icache);
+        free(vm->memory);
+        free(vm);
+        return NULL;
+    }
+    
     // Initialize registers
     for (int i = 0; i < T3_REGISTER_COUNT; i++) {
         vm->registers[i] = trit_create(TERNARY_NEUTRAL);
@@ -42,6 +62,11 @@ tvm_t* tvm_create(size_t memory_size) {
     vm->running = false;
     vm->halted = false;
     vm->error = false;
+    vm->instructions_executed = 0;
+    vm->cache_hits = 0;
+    vm->cache_misses = 0;
+    vm->branch_predictions = 0;
+    vm->branch_mispredictions = 0;
     
     return vm;
 }
@@ -50,6 +75,18 @@ void tvm_destroy(tvm_t* vm) {
     if (vm != NULL) {
         if (vm->memory != NULL) {
             free(vm->memory);
+        }
+        if (vm->icache != NULL) {
+            // Free cached instructions
+            for (size_t i = 0; i < vm->icache_size; i++) {
+                if (vm->icache[i].valid && vm->icache[i].instruction != NULL) {
+                    free(vm->icache[i].instruction);
+                }
+            }
+            free(vm->icache);
+        }
+        if (vm->bp_table != NULL) {
+            free(vm->bp_table);
         }
         free(vm);
     }
@@ -134,6 +171,44 @@ trit_t tvm_run(tvm_t* vm) {
     } else {
         return trit_create(TERNARY_POSITIVE);
     }
+}
+
+// Optimized instruction fetch with caching
+t3_instruction_t* tvm_fetch_cached(tvm_t* vm, uint32_t address) {
+    if (vm == NULL) return NULL;
+    
+    // Check cache
+    uint32_t cache_idx = address & vm->icache_mask;
+    icache_entry_t* entry = &vm->icache[cache_idx];
+    
+    if (entry->valid && entry->address == address) {
+        vm->cache_hits++;
+        return entry->instruction;
+    }
+    
+    // Cache miss - decode instruction
+    vm->cache_misses++;
+    
+    t3_instruction_t* instruction = malloc(sizeof(t3_instruction_t));
+    if (instruction == NULL) return NULL;
+    
+    // Simplified instruction decoding
+    instruction->opcode = trit_to_int(vm->memory[address]);
+    instruction->operand1 = 0;
+    instruction->operand2 = 0;
+    instruction->operand3 = 0;
+    instruction->immediate = 0;
+    instruction->valid = true;
+    
+    // Update cache
+    if (entry->valid && entry->instruction != NULL) {
+        free(entry->instruction);
+    }
+    entry->address = address;
+    entry->instruction = instruction;
+    entry->valid = true;
+    
+    return instruction;
 }
 
 void tvm_halt(tvm_t* vm) {
@@ -341,4 +416,26 @@ void tvm_handle_interrupt(tvm_t* vm, int interrupt_type) {
             vm->error = true;
             break;
     }
+}
+
+void tvm_get_performance_stats(tvm_t* vm, uint64_t* instructions, 
+                               uint64_t* cache_hits, uint64_t* cache_misses,
+                               uint64_t* bp_predictions, uint64_t* bp_mispredictions) {
+    if (vm == NULL) return;
+    
+    if (instructions) *instructions = vm->instructions_executed;
+    if (cache_hits) *cache_hits = vm->cache_hits;
+    if (cache_misses) *cache_misses = vm->cache_misses;
+    if (bp_predictions) *bp_predictions = vm->branch_predictions;
+    if (bp_mispredictions) *bp_mispredictions = vm->branch_mispredictions;
+}
+
+void tvm_reset_performance_stats(tvm_t* vm) {
+    if (vm == NULL) return;
+    
+    vm->instructions_executed = 0;
+    vm->cache_hits = 0;
+    vm->cache_misses = 0;
+    vm->branch_predictions = 0;
+    vm->branch_mispredictions = 0;
 }

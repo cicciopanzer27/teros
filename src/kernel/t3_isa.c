@@ -102,6 +102,26 @@ trit_t t3_instruction_execute(t3_instruction_t* instruction, t3_register_t* regi
             return t3_execute_pop(instruction, registers);
         case T3_OPCODE_HALT:
             return t3_execute_halt(instruction, registers);
+        case T3_OPCODE_SYSCALL:
+            return t3_execute_syscall(instruction, registers);
+        case T3_OPCODE_IRET:
+            return t3_execute_iret(instruction, registers);
+        case T3_OPCODE_CLI:
+            return t3_execute_cli(instruction, registers);
+        case T3_OPCODE_STI:
+            return t3_execute_sti(instruction, registers);
+        case T3_OPCODE_CPUID:
+            return t3_execute_cpuid(instruction, registers);
+        case T3_OPCODE_RDTSC:
+            return t3_execute_rdtsc(instruction, registers);
+        case T3_OPCODE_INT:
+            return t3_execute_int(instruction, registers);
+        case T3_OPCODE_MOV:
+            return t3_execute_mov(instruction, registers);
+        case T3_OPCODE_LEA:
+            return t3_execute_lea(instruction, registers);
+        case T3_OPCODE_TST:
+            return t3_execute_tst(instruction, registers);
         default:
             return trit_create(TERNARY_UNKNOWN);
     }
@@ -357,6 +377,104 @@ trit_t t3_execute_halt(t3_instruction_t* instruction, t3_register_t* registers) 
 }
 
 // =============================================================================
+// T3-ISA EXTENDED INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_syscall(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Syscall interface - syscall number in operand1
+    // Parameters in R1-R5, result in R0
+    // Store return address for IRET
+    if (registers[T3_REGISTER_LR].valid) {
+        // Save return address
+        registers[T3_REGISTER_LR] = registers[T3_REGISTER_PC];
+    }
+    
+    // Jump to syscall handler
+    // In real implementation, this would dispatch to kernel syscall table
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_iret(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Interrupt return - restore return address
+    if (registers[T3_REGISTER_LR].valid) {
+        registers[T3_REGISTER_PC] = registers[T3_REGISTER_LR];
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_cli(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Clear interrupt flag (CLI - Clear Interrupts)
+    // Set interrupt disabled flag in status register
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_sti(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Set interrupt flag (STI - Set Interrupts)
+    // Clear interrupt disabled flag in status register
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_cpuid(t3_instruction_t* instruction, t3_register_t* registers) {
+    // CPU identification - store CPU info in registers
+    if (instruction->operand1 < T3_REGISTER_COUNT) {
+        // Store CPU ID in destination register
+        registers[instruction->operand1] = trit_create(1); // Simplified
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_rdtsc(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Read timestamp counter - store current time in register
+    if (instruction->operand1 < T3_REGISTER_COUNT) {
+        // In a real implementation, this would read a hardware counter
+        registers[instruction->operand1] = trit_create(0); // Simplified
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_int(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Software interrupt - trigger interrupt vector
+    // Immediate value specifies interrupt number
+    // In a real implementation, this would call the interrupt handler
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_mov(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Move instruction - simplified version of load
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    registers[instruction->operand1] = registers[instruction->operand2];
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_lea(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Load effective address - calculate address
+    if (instruction->operand1 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    // Calculate address from base + offset
+    registers[instruction->operand1] = trit_create(instruction->immediate);
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_tst(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Test instruction - set condition flags based on value
+    if (instruction->operand1 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    // Update condition register
+    trit_t value = registers[instruction->operand1];
+    registers[T3_REGISTER_CR] = value;
+    
+    return trit_create(TERNARY_POSITIVE);
+}
+
+// =============================================================================
 // T3-ISA UTILITY FUNCTIONS
 // =============================================================================
 
@@ -392,6 +510,17 @@ const char* t3_opcode_to_string(uint8_t opcode) {
         case T3_OPCODE_PUSH: return "PUSH";
         case T3_OPCODE_POP: return "POP";
         case T3_OPCODE_HALT: return "HALT";
+        case T3_OPCODE_NOP: return "NOP";
+        case T3_OPCODE_SYSCALL: return "SYSCALL";
+        case T3_OPCODE_IRET: return "IRET";
+        case T3_OPCODE_CLI: return "CLI";
+        case T3_OPCODE_STI: return "STI";
+        case T3_OPCODE_CPUID: return "CPUID";
+        case T3_OPCODE_RDTSC: return "RDTSC";
+        case T3_OPCODE_INT: return "INT";
+        case T3_OPCODE_MOV: return "MOV";
+        case T3_OPCODE_LEA: return "LEA";
+        case T3_OPCODE_TST: return "TST";
         default: return "UNKNOWN";
     }
 }

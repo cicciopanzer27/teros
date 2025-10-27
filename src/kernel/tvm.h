@@ -31,6 +31,26 @@
 // TVM STRUCTURES
 // =============================================================================
 
+// Instruction cache entry
+typedef struct {
+    uint32_t address;
+    t3_instruction_t* instruction;
+    bool valid;
+} icache_entry_t;
+
+// Branch predictor state (2-bit saturating counter)
+typedef enum {
+    BP_STRONGLY_NOT_TAKEN = 0,
+    BP_WEAKLY_NOT_TAKEN = 1,
+    BP_WEAKLY_TAKEN = 2,
+    BP_STRONGLY_TAKEN = 3
+} branch_predictor_state_t;
+
+typedef struct {
+    uint32_t address;
+    branch_predictor_state_t state;
+} branch_predictor_t;
+
 typedef struct {
     trit_t* memory;
     trit_t registers[T3_REGISTER_COUNT];
@@ -38,6 +58,20 @@ typedef struct {
     bool running;
     bool halted;
     bool error;
+    
+    // Performance optimizations
+    icache_entry_t* icache;
+    size_t icache_size;
+    uint32_t icache_mask;
+    uint64_t instructions_executed;
+    uint64_t cache_hits;
+    uint64_t cache_misses;
+    
+    // Branch predictor
+    branch_predictor_t* bp_table;
+    size_t bp_table_size;
+    uint64_t branch_predictions;
+    uint64_t branch_mispredictions;
 } tvm_t;
 
 // =============================================================================
@@ -226,5 +260,36 @@ trit_t tvm_stack_pop(tvm_t* vm);
  * @param interrupt_type Type of interrupt
  */
 void tvm_handle_interrupt(tvm_t* vm, int interrupt_type);
+
+// =============================================================================
+// TVM PERFORMANCE FUNCTIONS
+// =============================================================================
+
+/**
+ * @brief Fetch instruction with caching
+ * @param vm The TVM instance
+ * @param address Instruction address
+ * @return Pointer to cached instruction
+ */
+t3_instruction_t* tvm_fetch_cached(tvm_t* vm, uint32_t address);
+
+/**
+ * @brief Get performance statistics
+ * @param vm The TVM instance
+ * @param instructions Pointer to store instruction count
+ * @param cache_hits Pointer to store cache hit count
+ * @param cache_misses Pointer to store cache miss count
+ * @param bp_predictions Pointer to store branch predictions
+ * @param bp_mispredictions Pointer to store mispredictions
+ */
+void tvm_get_performance_stats(tvm_t* vm, uint64_t* instructions, 
+                               uint64_t* cache_hits, uint64_t* cache_misses,
+                               uint64_t* bp_predictions, uint64_t* bp_mispredictions);
+
+/**
+ * @brief Clear performance statistics
+ * @param vm The TVM instance
+ */
+void tvm_reset_performance_stats(tvm_t* vm);
 
 #endif // TVM_H

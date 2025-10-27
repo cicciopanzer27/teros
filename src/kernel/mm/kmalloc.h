@@ -1,6 +1,6 @@
 /**
  * @file kmalloc.h
- * @brief Kernel heap allocator for TEROS
+ * @brief Kernel Heap Allocator Header
  * @author TEROS Development Team
  * @date 2025
  */
@@ -9,93 +9,123 @@
 #define KMALLOC_H
 
 #include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
 
-// Memory block structure
-typedef struct mem_block {
-    struct mem_block* next;
-    struct mem_block* prev;
-    size_t size;
-    bool free;
-} mem_block_t;
+// =============================================================================
+// KMALLOC CONSTANTS
+// =============================================================================
 
-// Heap statistics
-typedef struct {
-    size_t total_size;
-    size_t used_size;
-    size_t free_size;
-    uint32_t allocated_blocks;
-    uint32_t free_blocks;
-    uint32_t allocation_count;
-    uint32_t deallocation_count;
-} heap_stats_t;
+#define KMALLOC_MIN_SIZE 8
+#define KMALLOC_MAX_SIZE 4096
+#define KMALLOC_SLAB_SIZE 4096
+
+// =============================================================================
+// KMALLOC INITIALIZATION
+// =============================================================================
 
 /**
- * @brief Initialize heap allocator
- * @param heap_start Start address of heap
- * @param heap_size Size of heap in bytes
+ * @brief Initialize kernel heap allocator
  */
-void kmalloc_init(uint32_t heap_start, size_t heap_size);
+void kmalloc_init(void);
+
+// =============================================================================
+// KMALLOC ALLOCATION FUNCTIONS
+// =============================================================================
 
 /**
- * @brief Allocate memory
- * @param size Size in bytes to allocate
+ * @brief Allocate memory from kernel heap
+ * @param size Size in bytes
  * @return Pointer to allocated memory, or NULL on failure
  */
-void* kmalloc(size_t size);
+void* kmalloc(uint32_t size);
 
 /**
- * @brief Allocate aligned memory
- * @param size Size in bytes to allocate
- * @param align Alignment requirement
- * @return Pointer to allocated memory, or NULL on failure
- */
-void* kmalloc_aligned(size_t size, size_t align);
-
-/**
- * @brief Free memory
+ * @brief Free memory allocated with kmalloc
  * @param ptr Pointer to memory to free
  */
 void kfree(void* ptr);
 
 /**
  * @brief Reallocate memory
- * @param ptr Pointer to old memory
- * @param size New size
+ * @param ptr Pointer to existing memory
+ * @param new_size New size in bytes
  * @return Pointer to reallocated memory, or NULL on failure
  */
-void* krealloc(void* ptr, size_t size);
+void* krealloc(void* ptr, uint32_t new_size);
 
 /**
- * @brief Allocate and zero memory
- * @param nmemb Number of elements
+ * @brief Allocate and zero-initialize memory
+ * @param num Number of elements
  * @param size Size of each element
  * @return Pointer to allocated memory, or NULL on failure
  */
-void* kcalloc(size_t nmemb, size_t size);
+void* kcalloc(uint32_t num, uint32_t size);
+
+// =============================================================================
+// KMALLOC QUERY FUNCTIONS
+// =============================================================================
 
 /**
- * @brief Check for memory leaks
- * @return true if leaks detected, false otherwise
+ * @brief Get total number of allocations
+ * @return Total allocations
  */
-bool kmalloc_check_leaks(void);
+uint32_t kmalloc_get_total_allocations(void);
 
 /**
- * @brief Get heap statistics
- * @return Pointer to heap statistics structure
+ * @brief Get total number of deallocations
+ * @return Total deallocations
  */
-heap_stats_t* kmalloc_get_stats(void);
+uint32_t kmalloc_get_total_deallocations(void);
 
 /**
- * @brief Print heap statistics
+ * @brief Get total bytes allocated
+ * @return Total bytes allocated
  */
-void kmalloc_print_stats(void);
+uint32_t kmalloc_get_total_bytes_allocated(void);
 
 /**
- * @brief Compact heap (merge adjacent free blocks)
+ * @brief Get total bytes freed
+ * @return Total bytes freed
  */
-void kmalloc_compact(void);
+uint32_t kmalloc_get_total_bytes_freed(void);
+
+/**
+ * @brief Get heap start address
+ * @return Heap start address
+ */
+uint32_t kmalloc_get_heap_start(void);
+
+/**
+ * @brief Get heap end address
+ * @return Heap end address
+ */
+uint32_t kmalloc_get_heap_end(void);
+
+/**
+ * @brief Get heap size
+ * @return Heap size in bytes
+ */
+uint32_t kmalloc_get_heap_size(void);
+
+/**
+ * @brief Check if kmalloc is initialized
+ * @return true if initialized
+ */
+bool kmalloc_is_initialized(void);
+
+// =============================================================================
+// KMALLOC DEBUG FUNCTIONS
+// =============================================================================
+
+/**
+ * @brief Print kmalloc statistics
+ */
+void kmalloc_print_statistics(void);
+
+/**
+ * @brief Print cache information for specific size
+ * @param size Size to get cache info for
+ */
+void kmalloc_print_cache_info(uint32_t size);
 
 #endif // KMALLOC_H
-

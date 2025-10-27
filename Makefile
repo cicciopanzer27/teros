@@ -24,21 +24,28 @@ INCLUDE_SRCS = $(wildcard $(INCLUDE_DIR)/kernel/*.h)
 BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.S)
 DRIVER_SRCS = $(wildcard $(SRC_DIR)/drivers/**/*.c)
 FS_SRCS = $(wildcard $(SRC_DIR)/fs/**/*.c)
+TOOL_SRCS = $(wildcard tools/*.c)
+LIBC_SRCS = $(wildcard $(SRC_DIR)/lib/libc/*.c)
 
 # Object files
 KERNEL_OBJS = $(KERNEL_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 BOOT_OBJS = $(BOOT_SRCS:$(SRC_DIR)/%.S=$(BUILD_DIR)/%.o)
 DRIVER_OBJS = $(DRIVER_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 FS_OBJS = $(FS_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+TOOL_OBJS = $(TOOL_SRCS:tools/%.其余=$(BUILD_DIR)/tools/%.o)
+LIBC_OBJS = $(LIBC_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
-ALL_OBJS = $(BOOT_OBJS) $(KERNEL_OBJS) $(DRIVER_OBJS) $(FS_OBJS)
+ALL_OBJS = $(BOOT_OBJS) $(KERNEL_OBJS) $(DRIVER_OBJS) $(FS_OBJS) $(LIBC_OBJS)
+
+# Tools
+T3_LINKER = $(BIN_DIR)/t3_linker
 
 # Output
 KERNEL_BIN = $(BIN_DIR)/teros.bin
 ISO_FILE = $(BIN_DIR)/teros.iso
 
 # Default target
-all: $(KERNEL_BIN)
+all: $(KERNEL_BIN) tools
 
 # Create directories
 $(BUILD_DIR) $(BIN_DIR):
@@ -53,6 +60,12 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.S | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) $< -o $@
+
+# Build tools
+tools: $(T3_LINKER)
+
+$(T3_LINKER): $(BUILD_DIR)/tools/t3_linker.o | $(BIN_DIR)
+	$(CC) -o $@ $^
 
 # Link kernel
 $(KERNEL_BIN): $(ALL_OBJS) | $(BIN_DIR)
@@ -120,5 +133,5 @@ help:
 	@echo "  clean    - Remove build artifacts"
 	@echo "  help     - Show this help"
 
-.PHONY: all iso run debug test test-unit test-integration test-c test_trit test_trit_array clean help
+.PHONY: all iso run debug test test-unit test-integration test-c test_trit test_trit_array tools clean help
 

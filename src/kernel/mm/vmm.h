@@ -1,6 +1,6 @@
 /**
  * @file vmm.h
- * @brief Virtual Memory Manager for TEROS
+ * @brief Virtual Memory Manager (VMM) Header
  * @author TEROS Development Team
  * @date 2025
  */
@@ -10,88 +10,29 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
 
-// Page size (4KB)
+// =============================================================================
+// VMM CONSTANTS
+// =============================================================================
+
 #define VMM_PAGE_SIZE 4096
+#define VMM_PAGE_SHIFT 12
+#define VMM_PAGE_MASK 0xFFF
 
-// Virtual address space layout
-#define VMM_KERNEL_BASE  0xC0000000  // 3GB
-#define VMM_KERNEL_STACK 0xC0400000  // Kernel stack
-#define VMM_USER_BASE    0x40000000  // 1GB (userspace)
-#define VMM_USER_STACK   0xBFFFE000  // User stack
-
-// Page directory and table entries
-#define VMM_PRESENT    0x1
-#define VMM_WRITE      0x2
-#define VMM_USER       0x4
-#define VMM_PWT        0x8    // Page Write Through
-#define VMM_PCD        0x10   // Page Cache Disabled
-#define VMM_ACCESSED   0x20
-#define VMM_DIRTY      0x40
-#define VMM_PS         0x80   // Page Size
-#define VMM_G          0x100  // Global
-
-// Page fault error codes
-#define VMM_ERR_PRESENT   0x1   // Page was present
-#define VMM_ERR_WRITE     0x2   // Write operation
-#define VMM_ERR_USER      0x4   // User mode access
-#define VMM_ERR_RESERVED  0x8   // Reserved bit violation
-#define VMM_ERR_INSTR     0x10  // Instruction fetch
+// Page table entry flags
+#define VMM_PTE_PRESENT 0x001
+#define VMM_PTE_WRITABLE 0x002
+#define VMM_PTE_USER 0x004
+#define VMM_PTE_PWT 0x008
+#define VMM_PTE_PCD 0x010
+#define VMM_PTE_ACCESSED 0x020
+#define VMM_PTE_DIRTY 0x040
+#define VMM_PTE_SIZE 0x080
+#define VMM_PTE_GLOBAL 0x100
+#define VMM_PTE_AVAIL 0xE00
 
 // =============================================================================
-// VMM STRUCTURES
-// =============================================================================
-
-// Page table entry
-typedef struct {
-    uint32_t present : 1;
-    uint32_t write : 1;
-    uint32_t user : 1;
-    uint32_t pwt : 1;
-    uint32_t pcd : 1;
-    uint32_t accessed : 1;
-    uint32_t dirty : 1;
-    uint32_t page_size : 1;
-    uint32_t global : 1;
-    uint32_t available : 3;
-    uint32_t frame : 20;
-} page_table_entry_t;
-
-// Page directory entry (same as page table entry for simplicity)
-typedef page_table_entry_t page_directory_entry_t;
-
-// Page table structure
-typedef struct {
-    page_table_entry_t entries[1024];  // 1024 entries per table
-} page_table_t;
-
-// Page directory structure
-typedef struct {
-    page_directory_entry_t entries[1024];  // 1024 entries per directory
-} page_directory_t;
-
-// Virtual memory region
-typedef struct vmm_region {
-    uint32_t virtual_addr;
-    uint32_t physical_addr;
-    uint32_t size;
-    uint32_t flags;
-    bool is_mapped;
-    struct vmm_region* next;
-} vmm_region_t;
-
-// VMM state
-typedef struct {
-    page_directory_t* current_directory;
-    bool initialized;
-    uint32_t allocated_regions;
-    uint32_t kernel_pages;
-    uint32_t user_pages;
-} vmm_state_t;
-
-// =============================================================================
-// VIRTUAL MEMORY MANAGER API
+// VMM INITIALIZATION
 // =============================================================================
 
 /**
@@ -100,91 +41,174 @@ typedef struct {
 void vmm_init(void);
 
 /**
- * @brief Enable paging
+ * @brief Initialize kernel mapping
  */
-void vmm_enable_paging(void);
+void vmm_init_kernel_mapping(void);
 
 /**
- * @brief Disable paging
+ * @brief Initialize TLB
  */
-void vmm_disable_paging(void);
+void vmm_init_tlb(void);
+
+// =============================================================================
+// PAGE MAPPING FUNCTIONS
+// =============================================================================
 
 /**
- * @brief Map physical page to virtual address
- * @param virt_addr Virtual address
- * @param phys_addr Physical address
+ * @brief Map a virtual page to a physical page
+ * @param virtual_address Virtual address
+ * @param physical_address Physical address
  * @param flags Page flags
- * @return true on success, false on failure
+ * @return true if successful
  */
-bool vmm_map_page(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags);
+bool vmm_map_page(uint32_t virtual_address, uint32_t physical_address, uint32_t flags);
 
 /**
- * @brief Unmap virtual page
- * @param virt_addr Virtual address
- * @return true on success, false on failure
+ * @brief Unmap a virtual page
+ * @param virtual_address Virtual address
+ * @return true if successful
  */
-bool vmm_unmap_page(uint32_t virt_addr);
+bool vmm_unmap_page(uint32_t virtual_address);
 
 /**
- * @brief Map multiple contiguous pages
- * @param virt_addr Virtual address
- * @param phys_addr Physical address
- * @param count Number of pages
- * @param flags Page flags
- * @return true on success, false on failure
+ * @brief Check if a page is mapped
+ * @param virtual_address Virtual address
+ * @return true if mapped
  */
-bool vmm_map_pages(uint32_t virt_addr, uint32_t phys_addr, uint32_t count, uint32_t flags);
+bool vmm_is_page_mapped(uint32_t virtual_address);
 
 /**
- * @brief Unmap multiple contiguous pages
- * @param virt_addr Virtual address
- * @param count Number of pages
- * @return true on success, false on failure
+ * @brief Get physical address for virtual address
+ * @param virtual_address Virtual address
+ * @return Physical address, or 0 if not mapped
  */
-bool vmm_unmap_pages(uint32_t virt_addr, uint32_t count);
+uint32_t vmm_get_physical_address(uint32_t virtual_address);
+
+// =============================================================================
+// TLB OPERATIONS
+// =============================================================================
 
 /**
- * @brief Get physical address from virtual address
- * @param virt_addr Virtual address
- * @return Physical address or 0 if not mapped
+ * @brief Invalidate TLB entry
+ * @param virtual_address Virtual address
  */
-uint32_t vmm_get_physical(uint32_t virt_addr);
+void vmm_invalidate_tlb_entry(uint32_t virtual_address);
 
 /**
- * @brief Check if virtual address is mapped
- * @param virt_addr Virtual address
- * @return true if mapped, false otherwise
+ * @brief Invalidate entire TLB
  */
-bool vmm_is_mapped(uint32_t virt_addr);
+void vmm_invalidate_tlb(void);
 
 /**
- * @brief Switch to new page directory
- * @param directory New page directory
+ * @brief TLB lookup
+ * @param virtual_address Virtual address
+ * @param physical_address Output physical address
+ * @return true if found in TLB
  */
-void vmm_switch_directory(page_directory_t* directory);
+bool vmm_tlb_lookup(uint32_t virtual_address, uint32_t* physical_address);
 
 /**
- * @brief Flush TLB (Translation Lookaside Buffer)
+ * @brief Insert TLB entry
+ * @param virtual_address Virtual address
+ * @param physical_address Physical address
  */
-void vmm_flush_tlb(void);
+void vmm_tlb_insert(uint32_t virtual_address, uint32_t physical_address);
+
+// =============================================================================
+// PAGE FAULT HANDLING
+// =============================================================================
 
 /**
  * @brief Handle page fault
- * @param error_code Error code from CPU
- * @param fault_addr Faulting address
+ * @param virtual_address Virtual address that caused fault
+ * @param error_code Page fault error code
+ * @return true if fault was resolved
  */
-void vmm_handle_page_fault(uint32_t error_code, uint32_t fault_addr);
+bool vmm_handle_page_fault(uint32_t virtual_address, uint32_t error_code);
+
+// =============================================================================
+// VMM QUERY FUNCTIONS
+// =============================================================================
 
 /**
- * @brief Get VMM state
- * @return Pointer to VMM state structure
+ * @brief Get total number of pages
+ * @return Total pages
  */
-vmm_state_t* vmm_get_state(void);
+uint32_t vmm_get_total_pages(void);
+
+/**
+ * @brief Get number of mapped pages
+ * @return Mapped pages
+ */
+uint32_t vmm_get_mapped_pages(void);
+
+/**
+ * @brief Get number of unmapped pages
+ * @return Unmapped pages
+ */
+uint32_t vmm_get_unmapped_pages(void);
+
+/**
+ * @brief Get number of kernel pages
+ * @return Kernel pages
+ */
+uint32_t vmm_get_kernel_pages(void);
+
+/**
+ * @brief Get number of user pages
+ * @return User pages
+ */
+uint32_t vmm_get_user_pages(void);
+
+/**
+ * @brief Get number of TLB entries
+ * @return TLB entries
+ */
+uint32_t vmm_get_tlb_entries(void);
+
+/**
+ * @brief Get number of TLB hits
+ * @return TLB hits
+ */
+uint32_t vmm_get_tlb_hits(void);
+
+/**
+ * @brief Get number of TLB misses
+ * @return TLB misses
+ */
+uint32_t vmm_get_tlb_misses(void);
+
+/**
+ * @brief Get number of page faults
+ * @return Page faults
+ */
+uint32_t vmm_get_page_faults(void);
+
+/**
+ * @brief Get number of resolved page faults
+ * @return Resolved page faults
+ */
+uint32_t vmm_get_page_faults_resolved(void);
+
+/**
+ * @brief Check if VMM is initialized
+ * @return true if initialized
+ */
+bool vmm_is_initialized(void);
+
+// =============================================================================
+// VMM DEBUG FUNCTIONS
+// =============================================================================
 
 /**
  * @brief Print VMM statistics
  */
-void vmm_print_stats(void);
+void vmm_print_statistics(void);
+
+/**
+ * @brief Print page table for virtual address
+ * @param virtual_address Virtual address
+ */
+void vmm_print_page_table(uint32_t virtual_address);
 
 #endif // VMM_H
-
