@@ -12,36 +12,56 @@ SECTIONS
     . = 0x00100000;
     
     /* Code section */
-    .text :
+    .text ALIGN(4K) :
     {
         *(.multiboot)
         *(.text)
+        *(.text.*)
     }
     
     /* Read-only data */
-    .rodata :
+    .rodata ALIGN(4K) :
     {
         *(.rodata)
+        *(.rodata.*)
     }
     
     /* Initialized data */
-    .data :
+    .data ALIGN(4K) :
     {
         *(.data)
+        *(.data.*)
     }
     
     /* Uninitialized data (BSS) */
-    .bss :
+    .bss ALIGN(4K) :
     {
         *(COMMON)
         *(.bss)
+        *(.bss.*)
+        
+        /* BSS markers for boot.S */
+        _bss_start = .;
+        _bss_end = .;
     }
     
-    /* End of kernel */
+    /* Stack section */
+    .stack ALIGN(16) :
+    {
+        _stack_bottom = .;
+        . += 16K;  /* 16KB stack */
+        _stack_top = .;
+    }
+    
+    /* End of kernel marker */
+    _kernel_end = .;
+    
+    /* Discard unnecessary sections */
     /DISCARD/ :
     {
         *(.comment)
         *(.eh_frame)
+        *(.note*)
     }
 }
 
