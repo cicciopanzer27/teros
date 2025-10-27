@@ -80,7 +80,31 @@ clean:
 # Tests
 test:
 	@echo "Running tests..."
-	@python3 tests/run_tests.py
+	@python3 -m pytest tests/ -v
+
+test-unit:
+	@echo "Running unit tests..."
+	@python3 -m pytest tests/unit/ -v
+
+test-integration:
+	@echo "Running integration tests..."
+	@python3 -m pytest tests/integration/ -v
+
+# Test C modules
+test-c: test_trit test_trit_array
+
+test_trit: $(BUILD_DIR)/test_trit
+	./$(BUILD_DIR)/test_trit
+
+test_trit_array: $(BUILD_DIR)/test_trit_array
+	./$(BUILD_DIR)/test_trit_array
+
+# C Test executables
+$(BUILD_DIR)/test_trit: tests/unit/test_trit.c src/kernel/trit.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
+
+$(BUILD_DIR)/test_trit_array: tests/unit/test_trit_array.c src/kernel/trit.c src/kernel/trit_array.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 # Help
 help:
@@ -95,5 +119,5 @@ help:
 	@echo "  clean    - Remove build artifacts"
 	@echo "  help     - Show this help"
 
-.PHONY: all iso run debug test clean help
+.PHONY: all iso run debug test test-unit test-integration test-c test_trit test_trit_array clean help
 
