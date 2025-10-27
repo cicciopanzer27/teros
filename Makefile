@@ -101,10 +101,10 @@ test_trit_array: $(BUILD_DIR)/test_trit_array
 
 # C Test executables
 $(BUILD_DIR)/test_trit: tests/unit/test_trit.c src/kernel/trit.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -I$(SRC_DIR)/kernel -o $@ $^ -lm
 
 $(BUILD_DIR)/test_trit_array: tests/unit/test_trit_array.c src/kernel/trit.c src/kernel/trit_array.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -o $@ $^ -lm
+	$(CC) $(CFLAGS) -I$(SRC_DIR)/kernel -o $@ $^ -lm
 
 # Help
 help:
