@@ -1,8 +1,5 @@
 # Lambda³ Project Requirements
 
-# Core dependencies
-python>=3.11
-
 # Lambda calculus & parsing
 ply>=3.11              # Lexer/Parser
 lark-parser>=1.1.0     # Alternative parser
