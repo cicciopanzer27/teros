@@ -88,6 +88,8 @@ teros/
 │   │
 │   ├── drivers/                # Device drivers
 │   │   └── char/               # Character devices
+│   │       ├── console.c/h     # VGA text console driver
+│   │       └── (keyboard, serial in kernel/)
 │   │
 │   ├── kernel/                 # Kernel source code
 │   │   ├── console.c/h         # Console driver for text output
@@ -140,14 +142,155 @@ teros/
 │   │       └── ternary_linter.c/h      # Code linter
 │   │
 │   ├── lib/                    # Libraries
-│   │   ├── crt0.S              # C runtime initialization
+│   │   ├── crt0.S              # C runtime initialization (entry point for userspace)
 │   │   │
-│   │   ├── libc/               # C standard library (musl)
-│   │   │   └── ...             # 229 musl libc files
-│   │   │                       # (stdio, stdlib, string, math, etc.)
+│   │   ├── libc/               # C standard library (musl integration)
+│   │   │   ├── musl_stdio/     # Standard I/O (120 files)
+│   │   │   │   ├── printf.c, fprintf.c, sprintf.c, snprintf.c
+│   │   │   │   ├── scanf.c, fscanf.c, sscanf.c
+│   │   │   │   ├── fopen.c, fclose.c, fread.c, fwrite.c
+│   │   │   │   ├── fgets.c, fputs.c, fgetc.c, fputc.c
+│   │   │   │   ├── perror.c, remove.c, rename.c
+│   │   │   │   └── ... (106 more stdio files)
+│   │   │   │
+│   │   │   ├── musl_stdlib/    # Standard library (25 files)
+│   │   │   │   ├── atoi.c, atol.c, atoll.c, atof.c
+│   │   │   │   ├── strtol.c, strtod.c, wcstol.c, wcstod.c
+│   │   │   │   ├── qsort.c, bsearch.c
+│   │   │   │   ├── abs.c, labs.c, llabs.c
+│   │   │   │   ├── div.c, ldiv.c, lldiv.c
+│   │   │   │   └── ... (12 more stdlib files)
+│   │   │   │
+│   │   │   ├── musl_string/    # String operations (80 files)
+│   │   │   │   ├── memcpy.c, memset.c, memcmp.c, memchr.c
+│   │   │   │   ├── memmove.c, memccpy.c, mempcpy.c, memrchr.c
+│   │   │   │   ├── strcpy.c, strncpy.c, strcat.c, strncat.c
+│   │   │   │   ├── strcmp.c, strncmp.c, strcasecmp.c, strncasecmp.c
+│   │   │   │   ├── strlen.c, strnlen.c, strdup.c, strndup.c
+│   │   │   │   ├── strchr.c, strrchr.c, strstr.c, strcasestr.c
+│   │   │   │   ├── strtok.c, strsep.c, strspn.c, strcspn.c
+│   │   │   │   ├── bzero.c, bcopy.c, bcmp.c, swab.c
+│   │   │   │   ├── wcs*.c (wide char string functions - 23 files)
+│   │   │   │   ├── wmem*.c (wide char memory functions - 5 files)
+│   │   │   │   └── ... (30 more string files)
+│   │   │   │
+│   │   │   ├── ctype.c         # Character classification
+│   │   │   ├── errno.c/h       # Error handling
+│   │   │   ├── math.c          # Mathematical functions
+│   │   │   ├── memory.c/h      # Memory management wrappers
+│   │   │   ├── stdarg.c        # Variable arguments support
+│   │   │   ├── stdio.c/h       # Simplified stdio wrapper
+│   │   │   ├── stdlib.c/h      # Simplified stdlib wrapper
+│   │   │   ├── string.c/h      # Simplified string wrapper
+│   │   │   └── syscalls.c      # System call implementations (bridge to kernel)
 │   │   │
-│   │   └── teros/              # TEROS-specific libraries
-│   │       └── ...             # 87 Python files for ternary operations
+│   │   └── teros/              # TEROS-specific Python libraries (87 files)
+│   │       ├── apps/           # Applications (4 files)
+│   │       │   ├── ternary_calculator.py    # T3 calculator
+│   │       │   ├── ternary_editor.py        # Text editor
+│   │       │   ├── ternary_file_manager.py  # File manager
+│   │       │   └── ternary_system_monitor.py # System monitor
+│   │       │
+│   │       ├── boot/           # Boot utilities (2 files)
+│   │       │   ├── system_initialization.py  # Init system
+│   │       │   └── ternary_bootloader.py     # Boot sequence
+│   │       │
+│   │       ├── compiler/       # Compiler toolchain (6 files)
+│   │       │   ├── lambda3_compiler.py  # Lambda3 to T3 compiler
+│   │       │   ├── lexer.py             # Lexical analyzer
+│   │       │   ├── parser.py            # Syntax parser
+│   │       │   ├── type_checker.py      # Type system
+│   │       │   ├── optimizer.py         # Code optimizer
+│   │       │   └── code_generator.py    # T3 code generator
+│   │       │
+│   │       ├── core/           # Core ternary operations (6 files)
+│   │       │   ├── trit.py              # Trit operations
+│   │       │   ├── tritarray.py         # TritArray class
+│   │       │   ├── ternary_memory.py    # Ternary memory model
+│   │       │   ├── t3_instruction.py    # T3-ISA instructions
+│   │       │   └── t3_pcb.py            # Process control block
+│   │       │
+│   │       ├── fs/             # File system (6 files)
+│   │       │   ├── tfs.py               # Ternary File System
+│   │       │   ├── inode.py             # Inode management
+│   │       │   ├── superblock.py        # Superblock
+│   │       │   ├── directory.py         # Directory operations
+│   │       │   └── file_operations.py   # File I/O
+│   │       │
+│   │       ├── hal/            # Hardware abstraction layer (7 files)
+│   │       │   ├── cpu_emulator.py      # CPU emulation
+│   │       │   ├── device_manager.py    # Device management
+│   │       │   ├── driver_framework.py  # Driver framework
+│   │       │   ├── memory_mapping.py    # Memory-mapped I/O
+│   │       │   ├── memory_pool.py       # Memory pool allocator
+│   │       │   └── trit_encoder.py      # Trit encoding
+│   │       │
+│   │       ├── integration/    # System integration (3 files)
+│   │       │   ├── hardware_integration.py
+│   │       │   └── system_testing.py
+│   │       │
+│   │       ├── io/             # I/O subsystem (6 files)
+│   │       │   ├── io_manager.py
+│   │       │   ├── console_driver.py
+│   │       │   ├── device_manager.py
+│   │       │   ├── storage_driver.py
+│   │       │   └── network_driver.py
+│   │       │
+│   │       ├── isa/            # Instruction set (1 file)
+│   │       │   └── t3_isa.py            # T3-ISA Python implementation
+│   │       │
+│   │       ├── lambda/         # Lambda calculus (3 files)
+│   │       │   ├── lambda_repl.py       # Lambda REPL
+│   │       │   └── tvm_backend.py       # TVM backend
+│   │       │
+│   │       ├── libs/           # System libraries (6 files)
+│   │       │   ├── libternary.py        # Ternary operations
+│   │       │   ├── libmath.py           # Math library
+│   │       │   ├── libstring.py         # String library
+│   │       │   ├── libio.py             # I/O library
+│   │       │   └── libgraphics.py       # Graphics library
+│   │       │
+│   │       ├── memory/         # Memory management (6 files)
+│   │       │   ├── memory_manager.py    # Memory manager
+│   │       │   ├── buddy_allocator.py   # Buddy allocator
+│   │       │   ├── paging.py            # Paging system
+│   │       │   ├── memory_protection.py # Memory protection
+│   │       │   └── garbage_collector.py # GC
+│   │       │
+│   │       ├── optimization/   # Optimizations (3 files)
+│   │       │   ├── jit_compiler.py
+│   │       │   ├── lookup_tables.py
+│   │       │   └── simd_operations.py
+│   │       │
+│   │       ├── process/        # Process management (4 files)
+│   │       │   ├── scheduler.py
+│   │       │   ├── context_switch.py
+│   │       │   └── ipc.py
+│   │       │
+│   │       ├── security/       # Security (5 files)
+│   │       │   ├── security_manager.py
+│   │       │   ├── access_control.py
+│   │       │   ├── capabilities.py
+│   │       │   └── audit_logger.py
+│   │       │
+│   │       ├── shell/          # Shell (2 files)
+│   │       │   ├── tesh.py              # TEROS Shell
+│   │       │   └── lambda_commands.py   # Lambda commands
+│   │       │
+│   │       ├── syscalls/       # System calls (4 files)
+│   │       │   ├── syscall_interface.py
+│   │       │   ├── syscall_manager.py
+│   │       │   └── syscall_handlers.py
+│   │       │
+│   │       ├── tools/          # Development tools (2 files)
+│   │       │   ├── debugger/ternary_debugger.py
+│   │       │   └── profiler/ternary_profiler.py
+│   │       │
+│   │       └── vm/             # Virtual machine (4 files)
+│   │           ├── tvm.py               # Ternary VM
+│   │           ├── alu.py               # ALU
+│   │           ├── interpreter.py       # Interpreter
+│   │           └── ...                  # VM components
 │   │
 │   └── tools/                  # Build tools
 │       ├── t3_linker.c         # Ternary linker implementation
@@ -241,21 +384,156 @@ The kernel is written in C and includes:
 
 ### Libraries (`src/lib/`)
 
-#### C Standard Library (`libc/`)
-- 229 files from musl libc
-- Complete implementations of:
-  - **stdio**: printf, scanf, file operations
-  - **stdlib**: malloc, free, atoi, etc.
-  - **string**: memcpy, memset, strcmp, etc.
-  - **math**: sin, cos, sqrt, etc.
-  - **time**: time, clock, etc.
-- POSIX compatibility layer for system calls
+#### C Runtime (`crt0.S`)
+- Assembly entry point for userspace programs
+- Initializes program environment (argc, argv, environ)
+- Calls main() and handles return value
+- Links with kernel via syscall interface
 
-#### TEROS Libraries (`teros/`)
-- 87 Python files for ternary operations
-- Core ternary logic implementations
-- Lambda calculus Python interface
-- Testing utilities
+#### C Standard Library (`libc/`) - 229 files from musl
+
+**musl_stdio/** (120 files) - Complete Standard I/O:
+- **Output Functions**: printf, fprintf, sprintf, snprintf, vprintf, vfprintf, vsprintf, vsnprintf
+- **Input Functions**: scanf, fscanf, sscanf, vscanf, vfscanf, vsscanf
+- **File Operations**: fopen, fclose, fread, fwrite, freopen, fflush, fseek, ftell, rewind
+- **Character I/O**: fgetc, fputc, getc, putc, getchar, putchar, ungetc
+- **Line I/O**: fgets, fputs, gets, puts, getline, getdelim
+- **Error Handling**: perror, ferror, feof, clearerr
+- **File Management**: remove, rename, tmpfile, tmpnam, tempnam
+- **Buffering**: setbuf, setbuffer, setlinebuf, setvbuf
+- **Wide Character**: fgetwc, fputwc, getwc, putwc, fgetws, fputws, wprintf, wscanf
+- **Position**: fgetpos, fsetpos
+- **Locking**: flockfile, ftrylockfile, funlockfile
+- **Memory Streams**: fmemopen, open_memstream, open_wmemstream
+- **Pipes**: popen, pclose
+- **Extensions**: asprintf, vasprintf, dprintf, vdprintf
+
+**musl_stdlib/** (25 files) - Standard Library:
+- **String Conversion**: atoi, atol, atoll, atof, strtol, strtoll, strtod, wcstol, wcstod
+- **Searching/Sorting**: qsort, qsort_nr, bsearch
+- **Integer Math**: abs, labs, llabs, imaxabs, div, ldiv, lldiv, imaxdiv
+- **Floating Conversion**: ecvt, fcvt, gcvt
+
+**musl_string/** (80 files) - String & Memory Operations:
+- **Memory**: memcpy, memmove, memset, memcmp, memchr, memccpy, mempcpy, memrchr, memmem
+- **String Copy**: strcpy, strncpy, strcat, strncat, strdup, strndup, stpcpy, stpncpy
+- **String Compare**: strcmp, strncmp, strcasecmp, strncasecmp, strcoll, strverscmp
+- **String Search**: strchr, strrchr, strstr, strcasestr, strpbrk, strspn, strcspn, strtok, strsep
+- **String Measure**: strlen, strnlen
+- **BSD Functions**: bcopy, bcmp, bzero, index, rindex, swab
+- **Wide Char Strings**: wcscpy, wcscat, wcscmp, wcslen, wcschr, wcsstr, wcstok (23 functions)
+- **Wide Char Memory**: wmemcpy, wmemmove, wmemset, wmemcmp, wmemchr (5 functions)
+- **Error Strings**: strerror_r, strsignal
+- **Safe Variants**: strlcpy, strlcat, explicit_bzero
+
+**Additional C Library Files**:
+- **ctype.c**: Character classification (isalpha, isdigit, etc.)
+- **errno.c/h**: Error number handling
+- **math.c**: Mathematical functions (sin, cos, sqrt, pow, etc.)
+- **memory.c/h**: Memory management wrappers (malloc, free, calloc, realloc)
+- **stdarg.c**: Variable argument list support (va_start, va_arg, va_end)
+- **syscalls.c**: System call implementations bridging userspace to kernel
+
+#### TEROS Libraries (`teros/`) - 87 Python files
+
+**apps/** (4 files) - User Applications:
+- `ternary_calculator.py`: Interactive T3 calculator with ternary arithmetic
+- `ternary_editor.py`: Text editor with ternary encoding support
+- `ternary_file_manager.py`: File browser and manager
+- `ternary_system_monitor.py`: Process/memory/CPU monitor
+
+**boot/** (2 files) - Boot System:
+- `ternary_bootloader.py`: Boot sequence implementation
+- `system_initialization.py`: System initialization routines
+
+**compiler/** (6 files) - Compiler Toolchain:
+- `lambda3_compiler.py`: Lambda3 to T3-ISA compiler
+- `lexer.py`: Lexical analysis (tokenization)
+- `parser.py`: Syntax analysis (AST generation)
+- `type_checker.py`: Type inference and checking
+- `optimizer.py`: Code optimization passes
+- `code_generator.py`: T3 bytecode generation
+
+**core/** (6 files) - Core Ternary Operations:
+- `trit.py`: Fundamental trit operations (-, 0, +)
+- `tritarray.py`: Multi-trit array class with arithmetic
+- `ternary_memory.py`: Ternary memory model
+- `t3_instruction.py`: T3-ISA instruction definitions
+- `t3_pcb.py`: Process control block implementation
+
+**fs/** (6 files) - File System:
+- `tfs.py`: Ternary File System implementation
+- `inode.py`: Inode structure and operations
+- `superblock.py`: Superblock management
+- `directory.py`: Directory operations
+- `file_operations.py`: File I/O operations
+
+**hal/** (7 files) - Hardware Abstraction:
+- `cpu_emulator.py`: CPU instruction emulation
+- `device_manager.py`: Device registration/management
+- `driver_framework.py`: Driver development framework
+- `memory_mapping.py`: Memory-mapped I/O
+- `memory_pool.py`: Memory pool allocator
+- `trit_encoder.py`: Binary-to-ternary encoding
+
+**io/** (6 files) - I/O Subsystem:
+- `io_manager.py`: I/O request management
+- `console_driver.py`: Console I/O driver
+- `device_manager.py`: Device abstraction
+- `storage_driver.py`: Block device driver
+- `network_driver.py`: Network interface driver
+
+**lambda/** & **lambda_calc/** (3 files each) - Lambda Calculus:
+- `lambda_repl.py`: Interactive lambda calculus REPL
+- `tvm_backend.py`: TVM backend for lambda execution
+
+**libs/** (6 files) - System Libraries:
+- `libternary.py`: Ternary arithmetic operations
+- `libmath.py`: Mathematical functions
+- `libstring.py`: String manipulation
+- `libio.py`: I/O operations
+- `libgraphics.py`: Graphics primitives
+
+**memory/** (6 files) - Memory Management:
+- `memory_manager.py`: High-level memory manager
+- `buddy_allocator.py`: Buddy system allocator
+- `paging.py`: Page table management
+- `memory_protection.py`: Memory protection mechanisms
+- `garbage_collector.py`: Garbage collection
+
+**optimization/** (3 files) - Performance:
+- `jit_compiler.py`: Just-in-time compilation
+- `lookup_tables.py`: Precomputed operation tables
+- `simd_operations.py`: SIMD vectorization
+
+**process/** (4 files) - Process Management:
+- `scheduler.py`: Process scheduling algorithms
+- `context_switch.py`: Context switching logic
+- `ipc.py`: Inter-process communication
+
+**security/** (5 files) - Security:
+- `security_manager.py`: Security policy enforcement
+- `access_control.py`: Access control lists
+- `capabilities.py`: Capability-based security
+- `audit_logger.py`: Security audit logging
+
+**shell/** (2 files) - Command Shell:
+- `tesh.py`: TEROS Shell implementation
+- `lambda_commands.py`: Lambda calculus commands
+
+**syscalls/** (4 files) - System Calls:
+- `syscall_interface.py`: Syscall definitions
+- `syscall_manager.py`: Syscall dispatcher
+- `syscall_handlers.py`: Syscall implementations
+
+**tools/** (2 files) - Development Tools:
+- `debugger/ternary_debugger.py`: Interactive debugger
+- `profiler/ternary_profiler.py`: Performance profiler
+
+**vm/** (4 files) - Virtual Machine:
+- `tvm.py`: Ternary Virtual Machine
+- `alu.py`: Arithmetic Logic Unit
+- `interpreter.py`: Bytecode interpreter
 
 ### Tests (`tests/`)
 

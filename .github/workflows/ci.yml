@@ -28,7 +28,7 @@ jobs:
       
     - name: Run Python tests
       run: |
-        pytest tests/ -v --cov=src/lib/teros --cov=Lambda3_Project/lambda3 --cov=src/kernel --cov-report=term-missing --cov-report=xml
+        pytest tests/ -v --cov=src/lib/teros --cov=src/kernel --cov-report=term-missing --cov-report=xml
       
     - name: Upload coverage
       uses: codecov/codecov-action@v3
@@ -108,9 +108,9 @@ jobs:
       
     - name: Lint Python code
       run: |
-        flake8 src/lib/teros Lambda3_Project/lambda3 --count --select=E9,F63,F7,F82 --show-source --statistics
-        black --check src/lib/teros Lambda3_Project/lambda3 || true
-        isort --check src/lib/teros Lambda3_Project/lambda3 || true
+        flake8 src/lib/teros --count --select=E9,F63,F7,F82 --show-source --statistics
+        black --check src/lib/teros || true
+        isort --check src/lib/teros || true
       
   lambda3-tests:
     name: Lambda³ Integration Tests
@@ -125,15 +125,13 @@ jobs:
       with:
         python-version: '3.11'
       
-    - name: Install Lambda³ dependencies
+    - name: Install dependencies
       run: |
-        cd Lambda3_Project
         pip install -r requirements.txt
       
     - name: Run Lambda³ tests
       run: |
-        cd Lambda3_Project
-        python3 run_all_tests.py
+        pytest tests/lambda3/ -v
       
   coverage:
     name: Coverage Report
