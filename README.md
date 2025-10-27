@@ -28,17 +28,21 @@ Build a **working ternary operating system** with:
 - Toolchain (80%) - Assembler, linker
 
 ### ⚠️ Critical Path (In Progress)
-- Memory Management (60%) - PMM, VMM, Heap
+- Memory Management (80%) - PMM, VMM ✅, Heap
 - Process Management (50%) - PCB, Scheduler
 - Interrupts (30%) - IDT setup
 - Drivers (20%) - Console, Keyboard, Timer
 - File System (40%) - VFS framework
 
+### 🔨 Recently Added
+- ✅ **Init System** - First process (PID 1) implemented
+- ✅ **Shell** - Basic shell with builtin commands
+- ✅ **VMM** - Virtual memory manager complete
+
 ### ❌ Missing (Critical for Boot)
 - IPC (Pipes, Signals, Shared Memory) - **0%**
-- Minimal LibC - **0%**
-- Init System - **0%**
-- Shell - **0%**
+- Context Switching - **0%**
+- SimpleFS - **0%**
 
 ---
 
@@ -46,13 +50,16 @@ Build a **working ternary operating system** with:
 
 ```
 ┌─────────────────────────────────┐
-│   Userspace (Init, Shell)       │  ← NOT STARTED
+│   Userspace                     │
+│   ├── Init (PID 1) ✅           │
+│   ├── Shell ✅                  │
+│   └── Utilities (ls, cat, etc)  │
 ├─────────────────────────────────┤
-│   LibC Minimal                  │  ← NOT STARTED
+│   LibC Minimal (musl-based) ✅  │
 ├═════════════════════════════════┤
 │   Kernel                        │
 │   ├── Process Management (50%)  │
-│   ├── Memory Management (60%)   │
+│   ├── Memory Management (80%) ✅ │
 │   ├── Interrupts (30%)          │
 │   ├── Syscalls (80%)            │
 │   ├── Drivers (20%)             │
