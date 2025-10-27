@@ -7,6 +7,7 @@
 
 #include "trit.h"
 #include "tvm.h"
+#include "console.h"
 #include <stdint.h>
 
 // Multiboot structure (simplified)
@@ -21,18 +22,14 @@ typedef struct {
     // ... other fields
 } multiboot_info_t;
 
-// Console output functions (stub for now)
-void console_init(void) {
-    // TODO: Initialize VGA text mode console
-}
+// Console wrapper functions
 
 void puts(const char* str) {
-    // TODO: Output to console
-    // For now, this is a stub
+    console_puts(str);
 }
 
 void printf(const char* format, ...) {
-    // TODO: Formatted output
+    // TODO: Formatted output (for now just print as is)
     puts(format);
 }
 

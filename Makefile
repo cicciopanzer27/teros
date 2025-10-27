@@ -14,7 +14,7 @@ BIN_DIR = bin
 INCLUDE_DIR = include
 
 # Flags
-CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(INCLUDE_DIR) -g -O2
+CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(SRC_DIR)/drivers/char -I$(INCLUDE_DIR) -g -O2
 ASFLAGS = -f elf64
 LDFLAGS = -nostdlib
 
