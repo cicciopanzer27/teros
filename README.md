@@ -1,192 +1,146 @@
 # TEROS - Ternary Operating System
 
-## 🚀 Overview
+**Status**: Foundation Complete, Kernel Core In Progress  
+**Goal**: Complete T3-ISA + Functional OS (not just line count)  
+**Last Updated**: Gennaio 2025
 
-TEROS is a revolutionary operating system built from the ground up using ternary logic (trits instead of bits). This project implements a complete ternary ISA (T3-ISA), a Ternary Virtual Machine (TVM), and a fully functional operating system kernel with userspace utilities.
+---
 
-## 📊 Project Statistics
+## 🎯 OBJECTIVE
 
-- **Total Lines of Code**: ~75,000+ lines
-- **Source Files**: 120+ files
-- **Components**: Kernel, Filesystem, Drivers, IPC, Networking, Utilities
-- **Status**: Active Development
+Build a **working ternary operating system** with:
+1. Complete T3-ISA (Ternary Instruction Set)
+2. Bootable kernel with memory & process management
+3. Basic userspace with shell
+4. Lambda Calculus integration for formal reasoning
 
-## 🏗️ Architecture
+**NOT the primary goal**: Just reaching 500K lines
 
-### Core Components
+---
 
-#### 1. **T3-ISA (Ternary 3-Instruction Set Architecture)**
-- Core instructions (ADD, SUB, MUL, etc.)
-- Extended instructions (MOV, LEA, SYSCALL, etc.)
-- Privileged instructions for kernel mode
-- Condition codes and branch prediction
+## 📊 CURRENT STATUS
 
-#### 2. **TVM (Ternary Virtual Machine)**
-- Ternary register operations
-- Memory management with trits
-- Instruction cache
-- Branch prediction
-- Performance monitoring
+### ✅ Completed (24%)
+- Trit Core (100%) - Ternary operations
+- T3-ISA (95%) - 20+ instructions
+- TVM (90%) - Virtual machine
+- Bootloader (100%) - Multiboot support
+- Toolchain (80%) - Assembler, linker
 
-#### 3. **Kernel**
-- Physical Memory Manager (PMM) - Buddy allocator
-- Virtual Memory Manager (VMM) - Ternary page tables
-- Kernel heap allocator (kmalloc) - Slab allocator
-- Process Control Block (PCB)
-- Ternary scheduler
-- Context switching
-- Interrupt handling
-- System calls
+### ⚠️ Critical Path (In Progress)
+- Memory Management (60%) - PMM, VMM, Heap
+- Process Management (50%) - PCB, Scheduler
+- Interrupts (30%) - IDT setup
+- Drivers (20%) - Console, Keyboard, Timer
+- File System (40%) - VFS framework
 
-#### 4. **Filesystem**
-- Virtual File System (VFS) framework
-- SimpleFS implementation
-- File descriptor table
+### ❌ Missing (Critical for Boot)
+- IPC (Pipes, Signals, Shared Memory) - **0%**
+- Minimal LibC - **0%**
+- Init System - **0%**
+- Shell - **0%**
 
-#### 5. **Device Drivers**
-- Console (VGA text mode)
-- Keyboard (PS/2)
-- Serial (COM1-COM4)
-- Timer (PIT)
-- Block devices
+---
 
-#### 6. **IPC (Inter-Process Communication)**
-- Pipes
-- Signals
-- Shared memory
-- Semaphores
+## 🏗️ ARCHITECTURE
 
-#### 7. **Networking**
-- Ethernet layer
-- IPv4 support
-- TCP/IP stack
-- UDP support
-- Network interfaces
+```
+┌─────────────────────────────────┐
+│   Userspace (Init, Shell)       │  ← NOT STARTED
+├─────────────────────────────────┤
+│   LibC Minimal                  │  ← NOT STARTED
+├═════════════════════════════════┤
+│   Kernel                        │
+│   ├── Process Management (50%)  │
+│   ├── Memory Management (60%)   │
+│   ├── Interrupts (30%)          │
+│   ├── Syscalls (80%)            │
+│   ├── Drivers (20%)             │
+│   └── File System (40%)         │
+├─────────────────────────────────┤
+│   Foundation                    │
+│   ├── T3-ISA (95%) ✅           │
+│   ├── TVM (90%) ✅              │
+│   └── Bootloader (100%) ✅      │
+└─────────────────────────────────┘
+```
 
-#### 8. **Userspace**
-- LibC implementation
-- Shell (sh)
-- Utilities: ls, cat, echo, ps, pwd, mkdir, rmdir, cp, mv, rm, date, grep, sort
+---
 
-#### 9. **Lambda Calculus Integration**
-- Lambda reduction engine
-- Formal type checking
-- Proof verification
-- Formal methods for ternary computing
+## 🚀 TO GET TO BOOTABLE OS
 
-## 📁 Project Structure
+### Critical Path (Priority Order):
+1. **Complete Memory Management** - Finish PMM/VMM implementation
+2. **Complete Process Management** - Context switching + scheduler
+3. **Implement Interrupts** - IDT + handlers
+4. **Complete File System** - SimpleFS fully functional
+5. **Add IPC** - Basic pipes and signals
+6. **Minimal LibC** - Essential functions only
+7. **Init System** - Bootstrap first process
+8. **Basic Shell** - Command interpreter
+
+### Estimated Work:
+- **Lines**: ~50-80K lines of focused kernel code
+- **Time**: 3-6 months with consistent work
+- **Goal**: Boot → Login → Shell prompt
+
+---
+
+## 📁 PROJECT STRUCTURE
 
 ```
 teros/
 ├── src/
-│   ├── boot/           # Bootloader
-│   ├── kernel/         # Kernel core
-│   │   ├── mm/        # Memory management
-│   │   ├── fs/        # File systems
-│   │   ├── proc/      # Process management
-│   │   ├── drivers/   # Device drivers
-│   │   └── ...
-│   ├── lib/           # Libraries
-│   │   └── libc/      # Standard C library
-│   ├── bin/           # User utilities
-│   └── ...
-├── tests/              # Test suites
-├── tools/              # Build tools
-├── Makefile           # Build system
-└── README.md          # This file
+│   ├── boot/           ✅ Complete
+│   ├── kernel/         ⚠️ Core in progress
+│   │   ├── t3_isa.c   ✅ Complete
+│   │   ├── tvm.c      ✅ Complete
+│   │   ├── mm/        ⚠️ 60% done
+│   │   ├── proc/      ⚠️ 50% done
+│   │   ├── drivers/   ⚠️ 20% done
+│   │   └── fs/        ⚠️ 40% done
+│   ├── lib/
+│   │   └── libc/      ❌ Not started
+│   └── bin/           ❌ Not started
+├── tests/
+└── Makefile
 ```
 
-## 🛠️ Building
+---
 
-### Prerequisites
-- GCC cross-compiler
-- NASM assembler
-- Make
-- Python 3 (for AI code generation)
+## 🎯 REALISTIC NEXT STEPS
 
-### Build Commands
+1. **This Week**: Finish Memory Management + Interrupts
+2. **This Month**: Complete Process Management + Basic FS
+3. **This Quarter**: IPC + LibC + Init + Shell
+4. **Next Quarter**: Boot to shell, basic commands work
+
+Then we can worry about 500K lines.
+
+---
+
+## 🛠️ BUILD & RUN
 
 ```bash
-# Build the kernel
+# Build
 make kernel
 
-# Build all utilities
-make utils
-
-# Build everything
-make all
-
-# Clean build artifacts
-make clean
+# Run in QEMU
+qemu-system-x86_64 -kernel teros.bin -m 128M
 
 # Run tests
-make test
-```
-
-## 🧪 Testing
-
-The project includes comprehensive test suites:
-
-```bash
-# Run all tests
 pytest
-
-# Run specific test
-pytest tests/test_trit.py
-pytest tests/test_tvm.py
-pytest tests/test_ipc.py
 ```
-
-## 🤖 AI-Powered Development
-
-TEROS uses AI code generation to accelerate development:
-
-```bash
-# Run AI code generator
-python ai_generate.py
-```
-
-Supported AI models:
-- Ollama (CodeLlama, StarCoder)
-- GitHub Copilot API
-- ChatGPT API
-- Claude API
-
-## 📝 Documentation
-
-- `MASTER_ROADMAP.md` - Complete development roadmap
-- `PARALLEL_WORK_STRATEGY.md` - Strategy for parallel development
-- Inline code documentation with Doxygen-style comments
-
-## 🎯 Goals
-
-1. Complete ternary ISA implementation (500k+ lines)
-2. Full OS functionality
-3. Lambda Calculus integration for formal reasoning
-4. Performance optimization
-5. Comprehensive testing
-
-## 🤝 Contributing
-
-TEROS is an open research project. Contributions are welcome!
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 👥 Authors
-
-- TEROS Development Team
-- AI Code Generation: CodeLlama, StarCoder
-
-## 🔗 Links
-
-- GitHub: [TEROS Repository]
-- Documentation: See `MASTER_ROADMAP.md`
-- Issue Tracker: [GitHub Issues]
 
 ---
 
-**Note**: TEROS is under active development. Some components are incomplete or in development stages.
+## 📄 LICENSE
+
+MIT License
 
 ---
+
+## 👥 AUTHORS
+
+TEROS Development Team
+

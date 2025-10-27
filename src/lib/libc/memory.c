@@ -1,99 +1,113 @@
-#include <libc/memory.h>
-#include <stddef.h>
-#include <assert.h>
-#include <string.h>
-#include <trit_math.h>
+#include <stddef.h> // for size_t, ptrdiff_t
+#include <string.h> // for memset, memcpy, memmove, memcmp, memchr
 
+/*
+ * memset
+ * Sets the first `count` bytes of the memory area pointed to by `dest` to the specified value (interpreted as an unsigned char)
+ * Returns:
+ *  dest
+ */
 void* memset(void* dest, int value, size_t count) {
-    // Check for null pointer and count > 0
-    assert(dest != NULL && count > 0);
-
-    // Cast the void* to a trit pointer
-    trit_t* dest_trits = (trit_t*)dest;
-
-    // Initialize the trit with the given value
-    trit_init(&value, sizeof(int));
-
-    // Set the memory location to the initialized trit
+    // handle NULL pointer case
+    if (!dest) return dest;
+    
+    // cast `value` to an unsigned char since it's the only type supported by TEROS
+    unsigned char val = (unsigned char)value;
+    
+    // set each byte of memory area pointed to by `dest` to `val`
     for (size_t i = 0; i < count; i++) {
-        trit_set(dest_trits + i, &value);
+        ((unsigned char*)dest)[i] = val;
     }
-
+    
     return dest;
 }
 
-void* memcpy(void* dest, const void* src, size_t count) {
-    // Check for null pointers and count > 0
-    assert(dest != NULL && src != NULL && count > 0);
-
-    // Cast the void* to trit pointers
-    trit_t* dest_trits = (trit_t*)dest;
-    const trit_t* src_trits = (const trit_t*)src;
-
-    // Copy the memory location to the destination
+/*
+ * memcpy
+ * Copies the first `count` bytes of the memory area pointed to by `src` into the memory area pointed to by `dest`
+ * Returns:
+ *  dest
+ */
+void* memcpy(void* restrict dest, const void* restrict src, size_t count) {
+    // handle NULL pointer case
+    if (!dest || !src) return dest;
+    
+    // copy each byte of memory area pointed to by `src` into the memory area pointed to by `dest`
     for (size_t i = 0; i < count; i++) {
-        trit_set(dest_trits + i, src_trits + i);
+        ((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
     }
-
+    
     return dest;
 }
 
-void* memmove(void* dest, const void* src, size_t count) {
-    // Check for null pointers and count > 0
-    assert(dest != NULL && src != NULL && count > 0);
-
-    // Cast the void* to trit pointers
-    trit_t* dest_trits = (trit_t*)dest;
-    const trit_t* src_trits = (const trit_t*)src;
-
-    // Check for overlapping memory and adjust the pointers accordingly
-    if ((src < dest && src + count > dest) || (src > dest && src < dest + count)) {
-        src_trits += count - 1;
-        dest_trits += count - 1;
-    }
-
-    // Copy the memory location to the destination in reverse order if necessary
-    for (size_t i = 0; i < count; i++) {
-        trit_set(dest_trits + i, src_trits + i);
-    }
-
-    return dest;
-}
-
-int memcmp(const void* ptr1, const void* ptr2, size_t count) {
-    // Check for null pointers and count > 0
-    assert(ptr1 != NULL && ptr2 != NULL && count > 0);
-
-    // Cast the void* to trit pointers
-    const trit_t* ptr1_trits = (const trit_t*)ptr1;
-    const trit_t* ptr2_trits = (const trit_t*)ptr2;
-
-    for (size_t i = 0; i < count; i++) {
-        if (trit_cmp(ptr1_trits + i, ptr2_trits + i) != 0) {
-            return trit_cmp(ptr1_trits + i, ptr2_trits + i);
+/*
+ * memmove
+ * Copies the first `count` bytes of the memory area pointed to by `src` into the memory area pointed to by `dest`, allowing overlapping copies
+ * Returns:
+ *  dest
+ */
+void* memmove(void* restrict dest, const void* restrict src, size_t count) {
+    // handle NULL pointer case
+    if (!dest || !src) return dest;
+    
+    // handle overlaping cases
+    if (dest < src) {
+        for (ptrdiff_t i = 0; i < count; i++) {
+            ((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
+        }
+    } else {
+        for (ptrdiff_t i = count - 1; i >= 0; i--) {
+            ((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
         }
     }
+    
+    return dest;
+}
 
+/*
+ * memcmp
+ * Compares the first `count` bytes of the memory areas pointed to by `ptr1` and `ptr2`
+ * Returns:
+ *  -1 if `ptr1` is less than `ptr2`,
+ *  0 if they are equal, or
+ *  1 if `ptr1` is greater than `ptr2`
+ */
+int memcmp(const void* ptr1, const void* ptr2, size_t count) {
+    // handle NULL pointer case
+    if (!ptr1 || !ptr2) return 0;
+    
+    // compare each byte of memory areas pointed to by `ptr1` and `ptr2`
+    for (size_t i = 0; i < count; i++) {
+        unsigned char c1 = ((unsigned char*)ptr1)[i];
+        unsigned char c2 = ((unsigned char*)ptr2)[i];
+        
+        if (c1 != c2) return c1 - c2;
+    }
+    
+    // memory areas are equal
     return 0;
 }
 
+/*
+ * memchr
+ * Finds the first occurrence of the specified character `value` in the first `count` bytes of the memory area pointed to by `ptr`
+ * Returns:
+ *  a pointer to the found byte, or NULL if none is found
+ */
 void* memchr(const void* ptr, int value, size_t count) {
-    // Check for null pointer and count > 0
-    assert(ptr != NULL && count > 0);
-
-    // Cast the void* to trit pointers
-    const trit_t* ptr_trits = (const trit_t*)ptr;
-
-    // Initialize the trit with the given value
-    trit_init(&value, sizeof(int));
-
-    for (size_t i = 0; i < count; i++) {
-        if (trit_cmp(ptr_trits + i, &value) == 0) {
-            return ptr + i;
-        }
+    // handle NULL pointer case
+    if (!ptr) return NULL;
+    
+    // cast `value` to an unsigned char since it's the only type supported by TEROS
+    unsigned char val = (unsigned char)value;
+    
+    // search for `val` in memory area pointed to by `ptr`
+    const unsigned char* p = ptr;
+    while (count-- > 0) {
+        if (*p++ == val) return (void*)p;
     }
-
+    
+    // no match found
     return NULL;
 }
-```
 

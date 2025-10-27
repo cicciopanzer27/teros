@@ -33,6 +33,8 @@ Requirements:
             ["ollama", "run", model, full_prompt],
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='ignore',
             timeout=300
         )
         
@@ -215,6 +217,97 @@ Provide complete C code.
         return True
     return False
 
+def generate_ps_command():
+    """Generate ps command utility"""
+    print("Generating ps command...")
+    
+    prompt = """
+Implement the 'ps' command for TEROS in src/bin/ps.c.
+
+Features:
+- List running processes
+- Display process information (PID, state, name)
+- Call syscalls to get process list
+
+Requirements:
+- Use process syscalls
+- Proper formatting
+- Handle errors
+
+Provide complete C code.
+"""
+    
+    code = ollama_generate(prompt)
+    
+    if code:
+        os.makedirs("src/bin", exist_ok=True)
+        with open("src/bin/ps.c", "w") as f:
+            f.write(code)
+        print("SUCCESS: Generated src/bin/ps.c")
+        return True
+    return False
+
+def generate_kill_command():
+    """Generate kill command utility"""
+    print("Generating kill command...")
+    
+    prompt = """
+Implement the 'kill' command for TEROS in src/bin/kill.c.
+
+Features:
+- Send signals to processes
+- Support different signal types
+
+Requirements:
+- Use signal syscalls
+- Parse PID from arguments
+- Error handling
+
+Provide complete C code.
+"""
+    
+    code = ollama_generate(prompt)
+    
+    if code:
+        os.makedirs("src/bin", exist_ok=True)
+        with open("src/bin/kill.c", "w") as f:
+            f.write(code)
+        print("SUCCESS: Generated src/bin/kill.c")
+        return True
+    return False
+
+def generate_shell_command():
+    """Generate basic shell"""
+    print("Generating shell...")
+    
+    prompt = """
+Implement a basic shell for TEROS in src/bin/sh.c.
+
+Features:
+- Command prompt
+- Parse and execute commands
+- Support built-in commands
+- Support external commands via exec
+
+Requirements:
+- Read from stdin
+- Parse command line
+- Execute system commands
+- Basic error handling
+
+Provide complete C code.
+"""
+    
+    code = ollama_generate(prompt)
+    
+    if code:
+        os.makedirs("src/bin", exist_ok=True)
+        with open("src/bin/sh.c", "w") as f:
+            f.write(code)
+        print("SUCCESS: Generated src/bin/sh.c")
+        return True
+    return False
+
 def main():
     """Main generation function"""
     print("TEROS AI Code Generator")
@@ -234,6 +327,9 @@ def main():
         ("ls command", generate_ls_command),
         ("cat command", generate_cat_command),
         ("echo command", generate_echo_command),
+        ("ps command", generate_ps_command),
+        ("kill command", generate_kill_command),
+        ("shell", generate_shell_command),
     ]
     
     results = []
