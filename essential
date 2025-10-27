@@ -350,78 +350,38 @@
 
 ---
 
-## 💡 STRATEGIA RACCOMANDATA
 
-### Opzione A: OS Completo (Ambizioso)
 
-**Pros:**
+### Opzione A: OS Completo 
+
+
 - TEROS diventa OS standalone
 - Dimostra ternary computing end-to-end
-- Potenziale paper + PhD
-
-**Cons:**
+- Potenziale paper 
 - 3+ anni di lavoro
-- Serve team
-- Rischio di non finire
 
-**Raccomandazione:** Solo se hai team + funding
 
-### Opzione B: Research OS (Realistico)
 
-**Focus:**
-- Kernel minimale (Tier 1)
-- Dimostra concetti ternari
-- Paper su ternary OS design
-- Poi porta su hardware reale (se esiste)
-
-**Pros:**
-- Fattibile in 12-18 mesi (solo)
-- Pubblicabile
-- Proof of concept
-
-**Cons:**
-- Non daily usable
-- Limitato a VM
-
-**Raccomandazione:** ⭐ **BEST CHOICE** per ora
-
-### Opzione C: Hybrid (Pragmatico)
-
-**Focus:**
-- Lambda³ AI su Linux (6 mesi)
-- Poi porta kernel TEROS (12 mesi)
-- AI diventa killer app per TEROS
-
-**Pros:**
-- AI funzionante subito
-- TEROS come platform per AI
-- Doppia pubblicazione (AI + OS)
-
-**Cons:**
-- Più complesso
-- Richiede context switch
-
-**Raccomandazione:** Se vuoi commercializzare
 
 ---
 
-## 📋 PRIORITÀ IMMEDIATE (Prossimi 3 Mesi)
+## 📋 PRIORITÀ IMMEDIATE 
 
-### Mese 1: Bootstrap
+### Bootstrap
 
 1. **boot.S** - Assembly bootstrap (500 linee)
 2. **GDT/IDT setup** - Descriptor tables (500 linee)
 3. **Kernel entry** - C entry point (200 linee)
 4. **Test:** Kernel boots in QEMU
 
-### Mese 2: Memory
+### Memory
 
 1. **Physical allocator** - Page frame allocator (2K linee)
 2. **Virtual memory** - Paging (3K linee)
 3. **kmalloc** - Heap allocator (2K linee)
 4. **Test:** Allocate/free memory
 
-### Mese 3: Processes
+### Processes
 
 1. **Scheduler** - Round-robin (2K linee)
 2. **Context switch** - Save/restore (2K linee)
@@ -475,14 +435,6 @@
 
 ---
 
-## ✅ CONCLUSIONE
-
-### Cosa Hai
-
-- ✅ Solid foundation (T3-ISA, TVM, Lambda Engine)
-- ✅ ~75K linee di codice funzionante
-- ✅ Design documents per kernel components
-
 ### Cosa Manca
 
 - ❌ Kernel bootstrap (~2K linee)
@@ -497,14 +449,9 @@
 
 ### Raccomandazione Finale
 
-**Opzione B: Research OS**
 
-1. **Completa Tier 1** (12-18 mesi)
-2. **Pubblica paper** su ternary OS
-3. **Demo funzionante** in VM
-4. **Poi decidi:** Full OS vs AI focus
 
 **Questo è fattibile, pubblicabile, e dimostra il valore di TEROS.**
 
-Vuoi che ti aiuti a implementare il bootstrap code per iniziare? 🚀
+
 
