@@ -10,6 +10,7 @@
 #include "scheduler.h"
 #include "console.h"
 #include "kmalloc.h"
+#include "ipc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -495,6 +496,183 @@ trit_t syscall_write(uint32_t fd, uint32_t buf, uint32_t count,
     }
     
     return (trit_t)count;
+}
+
+trit_t syscall_lseek(uint32_t fd, uint32_t offset, uint32_t whence, 
+                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    process_t* current = process_get_current();
+    if (current == NULL) {
+        return TERNARY_NEGATIVE;
+    }
+    
+    console_puts("SYSCALL: lseek called\n");
+    
+    if (fd >= 32 || current->file_descriptors[fd] == 0) {
+        console_puts("SYSCALL: ERROR - Invalid file descriptor\n");
+        return TERNARY_NEGATIVE;
+    }
+    
+    // Simplified lseek implementation
+    // Return new offset (simplified as just the requested offset)
+    return (trit_t)offset;
+}
+
+trit_t syscall_stat(uint32_t path, uint32_t statbuf, uint32_t arg2, 
+                    uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: stat called\n");
+    
+    // Simplified stat implementation
+    // In a real system, we would fill the stat buffer with file information
+    (void)path;
+    (void)statbuf;
+    
+    return TERNARY_POSITIVE;
+}
+
+// =============================================================================
+// DIRECTORY SYSCALLS
+// =============================================================================
+
+trit_t syscall_opendir(uint32_t path, uint32_t arg1, uint32_t arg2, 
+                       uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: opendir called\n");
+    
+    // Simplified opendir - return directory handle (simplified as path hash)
+    (void)path;
+    return TERNARY_POSITIVE;
+}
+
+trit_t syscall_readdir(uint32_t dirfd, uint32_t arg1, uint32_t arg2, 
+                       uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: readdir called\n");
+    
+    // Simplified readdir - would return next directory entry
+    (void)dirfd;
+    return TERNARY_POSITIVE;
+}
+
+trit_t syscall_closedir(uint32_t dirfd, uint32_t arg1, uint32_t arg2, 
+                        uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: closedir called\n");
+    
+    (void)dirfd;
+    return TERNARY_POSITIVE;
+}
+
+trit_t syscall_mkdir(uint32_t path, uint32_t mode, uint32_t arg2, 
+                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: mkdir called\n");
+    
+    // Simplified mkdir - create directory
+    (void)path;
+    (void)mode;
+    return TERNARY_POSITIVE;
+}
+
+trit_t syscall_rmdir(uint32_t path, uint32_t arg1, uint32_t arg2, 
+                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: rmdir called\n");
+    
+    // Simplified rmdir - remove directory
+    (void)path;
+    return TERNARY_POSITIVE;
+}
+
+// =============================================================================
+// SIGNAL SYSCALLS
+// =============================================================================
+
+trit_t syscall_kill(uint32_t pid, uint32_t sig, uint32_t arg2, 
+                    uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: kill called - sending signal ");
+    printf("%u", sig);
+    console_puts(" to PID ");
+    printf("%u", pid);
+    console_puts("\n");
+    
+    // Send signal using IPC signal system
+    int result = signal_send((int)pid, (int)sig);
+    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+}
+
+trit_t syscall_signal(uint32_t sig, uint32_t handler, uint32_t arg2, 
+                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: signal called\n");
+    
+    // Register signal handler
+    int result = signal_register((int)sig, (signal_handler_t)handler);
+    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+}
+
+trit_t syscall_sigaction(uint32_t sig, uint32_t act, uint32_t oldact, 
+                         uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: sigaction called\n");
+    
+    // Simplified sigaction - just register signal handler from act structure
+    (void)oldact;  // Would save old action here
+    
+    // In a real implementation, we would parse the sigaction structure
+    // For now, just register the handler
+    return syscall_signal(sig, act, 0, 0, 0, 0);
+}
+
+// =============================================================================
+// IPC SYSCALLS
+// =============================================================================
+
+trit_t syscall_pipe(uint32_t pipefd, uint32_t arg1, uint32_t arg2, 
+                    uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: pipe called\n");
+    
+    // Create pipe using IPC pipe system
+    int result = pipe_open((int*)pipefd);
+    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+}
+
+trit_t syscall_shmget(uint32_t key, uint32_t size, uint32_t shmflg, 
+                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: shmget called\n");
+    
+    // Get/create shared memory segment
+    int shm_id = shm_open(NULL, (int)shmflg, (uint32_t)key);
+    if (shm_id < 0) {
+        return TERNARY_NEGATIVE;
+    }
+    
+    // Map the shared memory
+    void* addr = shm_map(shm_id, (size_t)size);
+    if (addr == NULL) {
+        return TERNARY_NEGATIVE;
+    }
+    
+    return (trit_t)shm_id;
+}
+
+trit_t syscall_shmat(uint32_t shmid, uint32_t shmaddr, uint32_t shmflg, 
+                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: shmat called\n");
+    
+    // Attach to shared memory segment
+    // shmaddr hint is usually 0 (let kernel choose address)
+    (void)shmaddr;
+    (void)shmflg;
+    
+    // Get shared memory block
+    shared_memory_t* shm = shm_get((int)shmid);
+    if (shm == NULL) {
+        return TERNARY_NEGATIVE;
+    }
+    
+    return (trit_t)(uintptr_t)shm->addr;
+}
+
+trit_t syscall_shmdt(uint32_t shmaddr, uint32_t arg1, uint32_t arg2, 
+                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    console_puts("SYSCALL: shmdt called\n");
+    
+    // Detach from shared memory
+    int result = shm_unmap((void*)shmaddr, 0);  // Size not used in simplified version
+    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
 }
 
 // =============================================================================
