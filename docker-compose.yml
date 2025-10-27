@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # TEROS Kernel Development Environment
+  teros-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: teros-dev
+    volumes:
+      - .:/teros
+      - teros-build:/teros/build
+      - teros-cache:/root/.cache
+    environment:
+      - TEROS_ENV=development
+      - QEMU_AUDIO_DRV=none
+    ports:
+      - "8000:8000"  # Kernel serial console
+      - "8080:8080"  # Lambda³ API
+      - "8888:8888"  # Jupyter/Development server
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+    networks:
+      - teros-network
+
+  # Lambda³ Service
+  lambda3:
+    build:
+      context: ./Lambda3_Project
+      dockerfile: Dockerfile
+    container_name: teros-lambda3
+    volumes:
+      - ./Lambda3_Project:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LAMBDA3_ENV=production
+    ports:
+      - "9000:9000"  # Lambda³ REPL
+    depends_on:
+      - teros-dev
+    command: python3 run_server.py
+    networks:
+      - teros-network
+
+  # Testing Container
+  teros-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: teros-test
+    volumes:
+      - .:/teros
+      - teros-build:/teros/build
+    environment:
+      - TEROS_ENV=testing
+    command: >
+      bash -c "
+        cd /teros &&
+        python3 -m pytest tests/ -v --cov=src --cov=Lambda3_Project/lambda3 &&
+        make test
+      "
+    depends_on:
+      - teros-dev
+    networks:
+      - teros-network
+
+volumes:
+  teros-build:
+  teros-cache:
+
+networks:
+  teros-network:
+    driver: bridge
+
