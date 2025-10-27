@@ -14,7 +14,7 @@ BIN_DIR = bin
 INCLUDE_DIR = include
 
 # Flags
-CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(SRC_DIR)/drivers/char -I$(INCLUDE_DIR) -g -O2
+CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(SRC_DIR)/kernel/mm -I$(SRC_DIR)/kernel/proc -I$(SRC_DIR)/drivers/char -I$(SRC_DIR)/fs/vfs -I$(SRC_DIR)/fs/simplefs -I$(INCLUDE_DIR) -g -O2
 ASFLAGS = -f elf64
 LDFLAGS = -nostdlib
 
@@ -22,8 +22,8 @@ LDFLAGS = -nostdlib
 KERNEL_SRCS = $(wildcard $(SRC_DIR)/kernel/*.c)
 INCLUDE_SRCS = $(wildcard $(INCLUDE_DIR)/kernel/*.h)
 BOOT_SRCS = $(wildcard $(SRC_DIR)/boot/*.S)
-DRIVER_SRCS = $(wildcard $(SRC_DIR)/drivers/*.c)
-FS_SRCS = $(wildcard $(SRC_DIR)/fs/*.c)
+DRIVER_SRCS = $(wildcard $(SRC_DIR)/drivers/**/*.c)
+FS_SRCS = $(wildcard $(SRC_DIR)/fs/**/*.c)
 
 # Object files
 KERNEL_OBJS = $(KERNEL_SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
