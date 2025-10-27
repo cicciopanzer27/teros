@@ -94,7 +94,7 @@ int fd_table_close(int fd) {
 vfs_file_t* fd_table_get(int fd) {
     if (!fd_table_initialized || fd < 0 || fd >= MAX_FILE_DESCRIPTORS) {
         return NULL;
-void
+    }
     
     if (!fd_table[fd].is_open) {
         return NULL;

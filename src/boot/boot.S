@@ -80,8 +80,8 @@ _start:
     call clear_bss
     
     /* Push multiboot parameters for kernel_main */
-    pushl multiboot_info
-    pushl multiboot_magic
+    push %ebx    /* multiboot_info pointer */
+    push %eax    /* multiboot_magic */
     
     /* Call kernel main function */
     call kernel_main

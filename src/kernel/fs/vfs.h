@@ -12,6 +12,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+// Define ssize_t for kernel (not in freestanding environment)
+typedef int64_t ssize_t;
+
 // File flags
 #define O_RDONLY 0x0000
 #define O_WRONLY 0x0001

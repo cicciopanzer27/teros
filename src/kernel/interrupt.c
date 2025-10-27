@@ -4,6 +4,8 @@
  */
 
 #include "interrupt.h"
+#include "console.h"
+#include "scheduler.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -35,6 +37,42 @@ static privilege_context_t priv_ctx = {
 // Interrupt nesting support
 static uint32_t interrupt_nesting_level = 0;
 static bool interrupt_nesting_enabled = false;
+
+// Forward declarations for exception and IRQ handlers
+void exception_handler_0(void);
+void exception_handler_1(void);
+void exception_handler_2(void);
+void exception_handler_3(void);
+void exception_handler_4(void);
+void exception_handler_5(void);
+void exception_handler_6(void);
+void exception_handler_7(void);
+void exception_handler_8(void);
+void exception_handler_10(void);
+void exception_handler_11(void);
+void exception_handler_12(void);
+void exception_handler_13(void);
+void exception_handler_14(void);
+void exception_handler_16(void);
+void exception_handler_17(void);
+void exception_handler_18(void);
+void exception_handler_19(void);
+void irq_handler_0(void);
+void irq_handler_1(void);
+void irq_handler_2(void);
+void irq_handler_3(void);
+void irq_handler_4(void);
+void irq_handler_5(void);
+void irq_handler_6(void);
+void irq_handler_7(void);
+void irq_handler_8(void);
+void irq_handler_9(void);
+void irq_handler_10(void);
+void irq_handler_11(void);
+void irq_handler_12(void);
+void irq_handler_13(void);
+void irq_handler_14(void);
+void irq_handler_15(void);
 
 void interrupt_init(void) {
     // Clear all handlers

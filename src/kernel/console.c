@@ -8,6 +8,7 @@
 #include "console.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 // =============================================================================
 // VGA TEXT MODE IMPLEMENTATION
@@ -179,9 +180,10 @@ void console_scroll(int lines) {
     
     if (lines > 0) {
         // Scroll up
-        for (size_t y = 0; y < VGA_HEIGHT - lines; y++) {
+        size_t scroll_lines = (size_t)lines;
+        for (size_t y = 0; y < VGA_HEIGHT - scroll_lines; y++) {
             for (size_t x = 0; x < VGA_WIDTH; x++) {
-                size_t src_index = (y + lines) * VGA_WIDTH + x;
+                size_t src_index = (y + scroll_lines) * VGA_WIDTH + x;
                 size_t dst_index = y * VGA_WIDTH + x;
                 console.buffer[dst_index * 2] = console.buffer[src_index * 2];
                 console.buffer[dst_index * 2 + 1] = console.buffer[src_index * 2 + 1];
@@ -189,21 +191,21 @@ void console_scroll(int lines) {
         }
         
         // Clear bottom lines
-        for (size_t y = VGA_HEIGHT - lines; y < VGA_HEIGHT; y++) {
+        for (size_t y = VGA_HEIGHT - scroll_lines; y < VGA_HEIGHT; y++) {
             for (size_t x = 0; x < VGA_WIDTH; x++) {
                 console_putentryat(' ', console.color, x, y);
             }
         }
         
-        if (console.row >= VGA_HEIGHT - lines) {
-            console.row = VGA_HEIGHT - lines - 1;
+        if (console.row >= VGA_HEIGHT - scroll_lines) {
+            console.row = VGA_HEIGHT - scroll_lines - 1;
         }
     } else {
         // Scroll down
-        lines = -lines;
-        for (size_t y = VGA_HEIGHT - 1; y >= lines; y--) {
+        size_t scroll_lines = (size_t)(-lines);
+        for (size_t y = VGA_HEIGHT - 1; y >= scroll_lines; y--) {
             for (size_t x = 0; x < VGA_WIDTH; x++) {
-                size_t src_index = (y - lines) * VGA_WIDTH + x;
+                size_t src_index = (y - scroll_lines) * VGA_WIDTH + x;
                 size_t dst_index = y * VGA_WIDTH + x;
                 console.buffer[dst_index * 2] = console.buffer[src_index * 2];
                 console.buffer[dst_index * 2 + 1] = console.buffer[src_index * 2 + 1];
@@ -211,13 +213,13 @@ void console_scroll(int lines) {
         }
         
         // Clear top lines
-        for (size_t y = 0; y < lines; y++) {
+        for (size_t y = 0; y < scroll_lines; y++) {
             for (size_t x = 0; x < VGA_WIDTH; x++) {
                 console_putentryat(' ', console.color, x, y);
             }
         }
         
-        console.row += lines;
+        console.row += scroll_lines;
         if (console.row >= VGA_HEIGHT) {
             console.row = VGA_HEIGHT - 1;
         }

@@ -3,7 +3,7 @@
 
 # Compiler and tools
 CC = gcc
-AS = nasm
+AS = gcc
 LD = ld
 AR = ar
 
@@ -14,7 +14,7 @@ BIN_DIR = bin
 INCLUDE_DIR = include
 
 # Flags
-CFLAGS = -Wall -Wextra -Werror -std=c11 \
+CFLAGS = -Wall -Wextra -Werror -std=gnu11 \
 	-ffreestanding -nostdlib -m64 \
 	-mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
 	-I$(SRC_DIR)/kernel \
@@ -25,7 +25,7 @@ CFLAGS = -Wall -Wextra -Werror -std=c11 \
 	-I$(SRC_DIR)/drivers/char \
 	-I$(INCLUDE_DIR) \
 	-g -O2
-ASFLAGS = -f elf64
+ASFLAGS = -m32 -c -nostdlib
 LDFLAGS = -nostdlib -static -z max-page-size=0x1000
 
 # Source files

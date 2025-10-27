@@ -10,7 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "kernel/fs/vfs.h"
+#include "vfs.h"
 
 #define MAX_FILE_DESCRIPTORS 256
 #define FD_UNUSED 0xFFFFFFFF

@@ -37,6 +37,12 @@ typedef struct {
     uint32_t zero;
 } idt_entry_t;
 
+// IDT Pointer (IDTR)
+typedef struct {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed)) idtr_t;
+
 // Interrupt handler type
 typedef void (*interrupt_handler_t)(uint32_t interrupt, uint32_t error_code);
 
