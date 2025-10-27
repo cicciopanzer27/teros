@@ -14,8 +14,6 @@ Build a **working ternary operating system** with:
 3. Basic userspace with shell
 4. Lambda Calculus integration for formal reasoning
 
-**NOT the primary goal**: Just reaching 500K lines
-
 ---
 
 ## 📊 CURRENT STATUS
@@ -181,8 +179,6 @@ teros/
 2. **This Month**: Complete Process Management + Basic FS
 3. **This Quarter**: IPC + LibC + Init + Shell
 4. **Next Quarter**: Boot to shell, basic commands work
-
-Then we can worry about 500K lines.
 
 ---
 
