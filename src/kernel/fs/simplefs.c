@@ -9,9 +9,13 @@
 #include "vfs.h"
 #include "console.h"
 #include "kmalloc.h"
+#include "block_device.h"
+#include "ramdisk.h"
+#include "timer.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 // =============================================================================
 // SIMPLEFS IMPLEMENTATION
@@ -68,6 +72,7 @@ typedef struct {
     uint8_t* inode_bitmap;
     bool initialized;
     uint32_t device_fd;
+    block_device_t* device;  /* Block device pointer */
 } simplefs_state_t;
 
 static simplefs_state_t simplefs_state;
@@ -85,19 +90,39 @@ void simplefs_init(uint32_t device_fd) {
     
     simplefs_state.device_fd = device_fd;
     
-    // TODO: Read superblock from device
-    // For now, initialize with defaults
-    simplefs_state.superblock.magic = SIMPLEFS_MAGIC;
-    simplefs_state.superblock.version = SIMPLEFS_VERSION;
-    simplefs_state.superblock.block_size = SIMPLEFS_BLOCK_SIZE;
-    simplefs_state.superblock.total_blocks = SIMPLEFS_MAX_BLOCKS;
-    simplefs_state.superblock.total_inodes = SIMPLEFS_MAX_INODES;
-    simplefs_state.superblock.free_blocks = SIMPLEFS_MAX_BLOCKS - 10; // Reserve for superblock/metadata
-    simplefs_state.superblock.free_inodes = SIMPLEFS_MAX_INODES - 1;  // Reserve root inode
-    simplefs_state.superblock.inode_bitmap_block = 1;
-    simplefs_state.superblock.data_bitmap_block = 2;
-    simplefs_state.superblock.inode_table_block = 3;
-    simplefs_state.superblock.root_inode = 0;
+    // Get ramdisk device
+    simplefs_state.device = ramdisk_get_device();
+    if (simplefs_state.device == NULL) {
+        console_puts("SIMPLEFS: ERROR - No block device available\n");
+        return;
+    }
+    
+    // Try to read existing superblock from device
+    simplefs_superblock_t sb;
+    uint32_t sectors_read = block_device_read(simplefs_state.device, 0, &sb, sizeof(sb) / 512 + 1);
+    
+    if (sectors_read > 0 && sb.magic == SIMPLEFS_MAGIC) {
+        // Valid filesystem found, use it
+        console_puts("SIMPLEFS: Found existing filesystem\n");
+        simplefs_state.superblock = sb;
+    } else {
+        // Initialize new filesystem
+        console_puts("SIMPLEFS: Creating new filesystem\n");
+        simplefs_state.superblock.magic = SIMPLEFS_MAGIC;
+        simplefs_state.superblock.version = SIMPLEFS_VERSION;
+        simplefs_state.superblock.block_size = SIMPLEFS_BLOCK_SIZE;
+        simplefs_state.superblock.total_blocks = SIMPLEFS_MAX_BLOCKS;
+        simplefs_state.superblock.total_inodes = SIMPLEFS_MAX_INODES;
+        simplefs_state.superblock.free_blocks = SIMPLEFS_MAX_BLOCKS - 10; // Reserve for superblock/metadata
+        simplefs_state.superblock.free_inodes = SIMPLEFS_MAX_INODES - 1;  // Reserve root inode
+        simplefs_state.superblock.inode_bitmap_block = 1;
+        simplefs_state.superblock.data_bitmap_block = 2;
+        simplefs_state.superblock.inode_table_block = 3;
+        simplefs_state.superblock.root_inode = 0;
+        
+        // Write superblock to device
+        block_device_write(simplefs_state.device, 0, &simplefs_state.superblock, sizeof(simplefs_superblock_t) / 512 + 1);
+    }
     
     // Allocate bitmaps
     simplefs_state.block_bitmap = (uint8_t*)kmalloc(SIMPLEFS_MAX_BLOCKS / 8);
@@ -223,14 +248,18 @@ bool simplefs_read_block(uint32_t block_num, void* buffer) {
         return false;
     }
     
-    // TODO: Read from device
-    // For now, just zero out the buffer
-    uint8_t* buf = (uint8_t*)buffer;
-    for (int i = 0; i < SIMPLEFS_BLOCK_SIZE; i++) {
-        buf[i] = 0;
+    if (simplefs_state.device == NULL) {
+        return false;
     }
     
-    return true;
+    // Calculate sector number (assuming 512-byte sectors)
+    // SimpleFS blocks are 4096 bytes = 8 sectors
+    uint32_t sector = block_num * (SIMPLEFS_BLOCK_SIZE / 512);
+    uint32_t sector_count = SIMPLEFS_BLOCK_SIZE / 512;
+    
+    uint32_t sectors_read = block_device_read(simplefs_state.device, sector, buffer, sector_count);
+    
+    return sectors_read == sector_count;
 }
 
 bool simplefs_write_block(uint32_t block_num, const void* buffer) {
@@ -238,8 +267,18 @@ bool simplefs_write_block(uint32_t block_num, const void* buffer) {
         return false;
     }
     
-    // TODO: Write to device
-    return true;
+    if (simplefs_state.device == NULL) {
+        return false;
+    }
+    
+    // Calculate sector number (assuming 512-byte sectors)
+    // SimpleFS blocks are 4096 bytes = 8 sectors
+    uint32_t sector = block_num * (SIMPLEFS_BLOCK_SIZE / 512);
+    uint32_t sector_count = SIMPLEFS_BLOCK_SIZE / 512;
+    
+    uint32_t sectors_written = block_device_write(simplefs_state.device, sector, buffer, sector_count);
+    
+    return sectors_written == sector_count;
 }
 
 // =============================================================================
@@ -315,7 +354,7 @@ uint32_t simplefs_create_file(const char* path, uint32_t mode) {
     inode.gid = 0; // Root group
     inode.size = 0;
     inode.blocks = 0;
-    inode.ctime = 0; // TODO: Get current time
+    inode.ctime = timer_get_ticks(); // Current time from timer
     inode.mtime = inode.ctime;
     inode.atime = inode.ctime;
 
@@ -350,7 +389,7 @@ uint32_t simplefs_create_directory(const char* path, uint32_t mode) {
     inode.gid = 0; // Root group
     inode.size = 0;
     inode.blocks = 0;
-    inode.ctime = 0; // TODO: Get current time
+    inode.ctime = timer_get_ticks(); // Current time from timer
     inode.mtime = inode.ctime;
     inode.atime = inode.ctime;
 
@@ -431,7 +470,7 @@ size_t simplefs_read_file(uint32_t inode_num, uint32_t offset, void* buffer, siz
     }
 
     // Update access time
-    inode->atime = 0; // TODO: Get current time
+    inode->atime = timer_get_ticks(); // Current time from timer
     simplefs_write_inode(inode);
 
     return bytes_read;
@@ -447,15 +486,56 @@ size_t simplefs_write_file(uint32_t inode_num, uint32_t offset, const void* buff
         return 0;
     }
 
-    // TODO: Implement file writing with block allocation
-    // For now, just return success without writing
-    size_t bytes_written = size;
+    // Implement file writing with block allocation
+    size_t bytes_written = 0;
+    uint32_t current_offset = offset;
+    uint32_t block_index = current_offset / SIMPLEFS_BLOCK_SIZE;
+    uint32_t block_offset = current_offset % SIMPLEFS_BLOCK_SIZE;
+
+    while (bytes_written < size && block_index < 12) {
+        // Allocate block if needed
+        if (inode->direct_blocks[block_index] == 0) {
+            uint32_t new_block = simplefs_alloc_block();
+            if (new_block == 0) {
+                break; // No more blocks available
+            }
+            inode->direct_blocks[block_index] = new_block;
+            inode->blocks++;
+        }
+
+        uint32_t block_num = inode->direct_blocks[block_index];
+        uint8_t block_buffer[SIMPLEFS_BLOCK_SIZE];
+
+        // Read existing block content if we're doing partial write
+        if (block_offset != 0 || (size - bytes_written) < SIMPLEFS_BLOCK_SIZE) {
+            simplefs_read_block(block_num, block_buffer);
+        }
+
+        // Calculate bytes to write in this block
+        size_t block_bytes = SIMPLEFS_BLOCK_SIZE - block_offset;
+        if (block_bytes > size - bytes_written) {
+            block_bytes = size - bytes_written;
+        }
+
+        // Copy data to block buffer
+        memcpy(block_buffer + block_offset, (const uint8_t*)buffer + bytes_written, block_bytes);
+
+        // Write block back
+        if (!simplefs_write_block(block_num, block_buffer)) {
+            break;
+        }
+
+        bytes_written += block_bytes;
+        current_offset += block_bytes;
+        block_index++;
+        block_offset = 0;
+    }
 
     // Update file size and modification time
-    if (offset + size > inode->size) {
-        inode->size = offset + size;
+    if (offset + bytes_written > inode->size) {
+        inode->size = offset + bytes_written;
     }
-    inode->mtime = 0; // TODO: Get current time
+    inode->mtime = timer_get_ticks(); // Current time from timer
     simplefs_write_inode(inode);
 
     return bytes_written;
