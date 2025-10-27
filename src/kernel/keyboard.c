@@ -9,6 +9,17 @@
 #include "console.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+
+// =============================================================================
+// FORWARD DECLARATIONS
+// =============================================================================
+
+static inline void outb(uint16_t port, uint8_t value);
+static inline uint8_t inb(uint16_t port);
+static inline void memset(void* ptr, int value, size_t size);
+uint8_t keyboard_read_config(void);
+void keyboard_write_config(uint8_t config);
 
 // =============================================================================
 // KEYBOARD IMPLEMENTATION

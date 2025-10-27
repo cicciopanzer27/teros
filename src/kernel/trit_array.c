@@ -226,20 +226,6 @@ trit_array_t* trit_array_not(trit_array_t* array) {
 // TRIT ARRAY CONVERSION OPERATIONS
 // =============================================================================
 
-int trit_array_to_int(trit_array_t* array) {
-    if (array == NULL) return 0;
-    
-    int result = 0;
-    int power = 1;
-    
-    for (int i = array->size - 1; i >= 0; i--) {
-        result += trit_to_int(array->trits[i]) * power;
-        power *= 3;
-    }
-    
-    return result;
-}
-
 trit_array_t* trit_array_from_int(int value, size_t size) {
     trit_array_t* array = trit_array_create(size);
     if (array == NULL) return NULL;
@@ -255,15 +241,17 @@ trit_array_t* trit_array_from_int(int value, size_t size) {
     return array;
 }
 
-float trit_array_to_float(trit_array_t* array) {
-    if (array == NULL) return 0.0f;
+int32_t trit_array_to_int(trit_array_t* array) {
+    if (array == NULL) return 0;
     
-    float result = 0.0f;
-    float power = 1.0f;
+    // TODO: Implement without floating-point (SSE disabled in kernel)
+    // Convert ternary array to integer using base-3 arithmetic
+    int32_t result = 0;
+    int32_t power = 1;
     
     for (int i = array->size - 1; i >= 0; i--) {
-        result += trit_to_float(array->trits[i]) * power;
-        power *= 3.0f;
+        result += trit_to_int(array->trits[i]) * power;
+        power *= 3;
     }
     
     return result;
@@ -350,32 +338,21 @@ trit_array_t* trit_array_from_string(const char* str) {
 // =============================================================================
 
 void trit_array_print(trit_array_t* array) {
+    // DEBUG: printf version disabled (requires printf)
     if (array == NULL) {
-        printf("NULL TritArray\n");
         return;
     }
-    
-    printf("TritArray[%zu]: ", array->size);
-    for (size_t i = 0; i < array->size; i++) {
-        printf("%s", trit_to_string(array->trits[i]));
-        if (i < array->size - 1) printf(", ");
-    }
-    printf("\n");
+    // Would print TritArray[size]: trit0, trit1, ...
+    (void)array;
 }
 
 void trit_array_debug(trit_array_t* array) {
+    // DEBUG: printf version disabled (requires printf)
     if (array == NULL) {
-        printf("TritArray Debug: NULL\n");
         return;
     }
-    
-    printf("TritArray Debug: size=%zu, capacity=%zu, valid=%s\n", 
-           array->size, array->capacity, trit_array_is_valid(array) ? "true" : "false");
-    
-    for (size_t i = 0; i < array->size; i++) {
-        printf("  [%zu]: ", i);
-        trit_debug(array->trits[i]);
-    }
+    // Would print size, capacity, valid status, and all trits
+    (void)array;
 }
 
 bool trit_array_equals(trit_array_t* a, trit_array_t* b) {

@@ -247,6 +247,7 @@ char* ternary_disassembler_format_instruction(ternary_disassembler_t* disassembl
 }
 
 char* ternary_disassembler_format_instruction_with_labels(ternary_disassembler_t* disassembler, t3_instruction_t* instruction, int address) {
+    (void)address;
     if (disassembler == NULL || instruction == NULL) {
         return NULL;
     }

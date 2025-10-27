@@ -13,7 +13,7 @@
 
 #define TEST_ASSERT(condition, message) \
     do { \
-        if (!(condition)) { \
+        if (!(trit_get_value(condition) == TERNARY_POSITIVE)) { \
             printf("FAILED: %s\n", message); \
             return false; \
         } \
@@ -27,17 +27,17 @@ bool test_data_movement(void) {
     
     // Test LOAD
     t3_instruction_set(instr, T3_OPCODE_LOAD, T3_REGISTER_R0, 0, 0, 0);
-    trit_t value = trit_create(TERNARY_POS);
+    trit_t value = trit_create(TERNARY_POSITIVE);
     t3_execute_load(instr, regs);
     TEST_ASSERT(trit_equal(regs[T3_REGISTER_R0], value), "LOAD instruction");
     
     // Test STORE
     t3_instruction_set(instr, T3_OPCODE_STORE, T3_REGISTER_R0, 0, 0, 0);
     t3_execute_store(instr, regs);
-    TEST_ASSERT(true, "STORE instruction");
+    TEST_ASSERT(trit_create(TERNARY_POSITIVE), "STORE instruction");
     
     // Test MOV
-    regs[T3_REGISTER_R1] = trit_create(TERNARY_NEG);
+    regs[T3_REGISTER_R1] = trit_create(TERNARY_NEGATIVE);
     t3_instruction_set(instr, T3_OPCODE_MOV, T3_REGISTER_R0, T3_REGISTER_R1, 0, 0);
     t3_execute_mov(instr, regs);
     TEST_ASSERT(trit_equal(regs[T3_REGISTER_R0], regs[T3_REGISTER_R1]), "MOV instruction");
@@ -54,18 +54,18 @@ bool test_arithmetic(void) {
     t3_instruction_t* instr = t3_instruction_create();
     
     // Test ADD: +1 + +1 = -1 (ternary arithmetic)
-    regs[T3_REGISTER_R0] = trit_create(TERNARY_POS);
-    regs[T3_REGISTER_R1] = trit_create(TERNARY_POS);
+    regs[T3_REGISTER_R0] = trit_create(TERNARY_POSITIVE);
+    regs[T3_REGISTER_R1] = trit_create(TERNARY_POSITIVE);
     t3_instruction_set(instr, T3_OPCODE_ADD, T3_REGISTER_R2, T3_REGISTER_R0, T3_REGISTER_R1, 0);
     t3_execute_add(instr, regs);
-    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_NEG)), "ADD +1 + +1");
+    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_NEGATIVE)), "ADD +1 + +1");
     
     // Test SUB
-    regs[T3_REGISTER_R0] = trit_create(TERNARY_POS);
-    regs[T3_REGISTER_R1] = trit_create(TERNARY_NEG);
+    regs[T3_REGISTER_R0] = trit_create(TERNARY_POSITIVE);
+    regs[T3_REGISTER_R1] = trit_create(TERNARY_NEGATIVE);
     t3_instruction_set(instr, T3_OPCODE_SUB, T3_REGISTER_R2, T3_REGISTER_R0, T3_REGISTER_R1, 0);
     t3_execute_sub(instr, regs);
-    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_POS)), "SUB +1 - -1");
+    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_POSITIVE)), "SUB +1 - -1");
     
     t3_instruction_destroy(instr);
     printf("Arithmetic instructions: PASSED\n");
@@ -79,16 +79,16 @@ bool test_logic(void) {
     t3_instruction_t* instr = t3_instruction_create();
     
     // Test AND
-    regs[T3_REGISTER_R0] = trit_create(TERNARY_POS);
-    regs[T3_REGISTER_R1] = trit_create(TERNARY_NEG);
+    regs[T3_REGISTER_R0] = trit_create(TERNARY_POSITIVE);
+    regs[T3_REGISTER_R1] = trit_create(TERNARY_NEGATIVE);
     t3_instruction_set(instr, T3_OPCODE_AND, T3_REGISTER_R2, T3_REGISTER_R0, T3_REGISTER_R1, 0);
     t3_execute_and(instr, regs);
-    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_NEG)), "AND +1 & -1");
+    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_NEGATIVE)), "AND +1 & -1");
     
     // Test OR
     t3_instruction_set(instr, T3_OPCODE_OR, T3_REGISTER_R2, T3_REGISTER_R0, T3_REGISTER_R1, 0);
     t3_execute_or(instr, regs);
-    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_POS)), "OR +1 | -1");
+    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R2], trit_create(TERNARY_POSITIVE)), "OR +1 | -1");
     
     t3_instruction_destroy(instr);
     printf("Logic instructions: PASSED\n");
@@ -102,7 +102,7 @@ bool test_control_flow(void) {
     t3_instruction_t* instr = t3_instruction_create();
     
     // Initialize PC
-    regs[T3_REGISTER_PC] = trit_create(TERNARY_ZERO);
+    regs[T3_REGISTER_PC] = trit_create(TERNARY_NEUTRAL);
     
     // Test JMP
     int16_t target = 42;
@@ -111,8 +111,8 @@ bool test_control_flow(void) {
     // PC should be updated
     
     // Test JZ
-    regs[T3_REGISTER_R0] = trit_create(TERNARY_ZERO);
-    regs[T3_REGISTER_PC] = trit_create(TERNARY_ZERO);
+    regs[T3_REGISTER_R0] = trit_create(TERNARY_NEUTRAL);
+    regs[T3_REGISTER_PC] = trit_create(TERNARY_NEUTRAL);
     t3_instruction_set(instr, T3_OPCODE_JZ, T3_REGISTER_R0, 0, 0, target);
     t3_execute_jz(instr, regs);
     
@@ -128,17 +128,17 @@ bool test_stack_operations(void) {
     t3_instruction_t* instr = t3_instruction_create();
     
     // Initialize stack pointer
-    regs[T3_REGISTER_SP] = trit_create(TERNARY_ZERO);
+    regs[T3_REGISTER_SP] = trit_create(TERNARY_NEUTRAL);
     
     // Test PUSH
-    regs[T3_REGISTER_R0] = trit_create(TERNARY_POS);
+    regs[T3_REGISTER_R0] = trit_create(TERNARY_POSITIVE);
     t3_instruction_set(instr, T3_OPCODE_PUSH, T3_REGISTER_R0, 0, 0, 0);
     t3_execute_push(instr, regs);
     
     // Test POP
     t3_instruction_set(instr, T3_OPCODE_POP, T3_REGISTER_R1, 0, 0, 0);
     t3_execute_pop(instr, regs);
-    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R1], trit_create(TERNARY_POS)), "PUSH/POP");
+    TEST_ASSERT(trit_equal(regs[T3_REGISTER_R1], trit_create(TERNARY_POSITIVE)), "PUSH/POP");
     
     t3_instruction_destroy(instr);
     printf("Stack operations: PASSED\n");

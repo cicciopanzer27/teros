@@ -165,14 +165,9 @@ trit_t trit_less(trit_t a, trit_t b) {
 // TRIT CONVERSION OPERATIONS
 // =============================================================================
 
-int trit_to_int(trit_t trit) {
+int32_t trit_to_int(trit_t trit) {
     if (!trit.valid) return 0;
-    return trit.value;
-}
-
-float trit_to_float(trit_t trit) {
-    if (!trit.valid) return 0.0f;
-    return (float)trit.value;
+    return (int32_t)trit.value;  // -1, 0, or 1
 }
 
 bool trit_to_bool(trit_t trit) {
@@ -256,12 +251,15 @@ trit_t trit_from_binary(uint8_t binary) {
 // =============================================================================
 
 void trit_print(trit_t trit) {
-    printf("Trit: %s (%d)\n", trit_to_string(trit), trit.value);
+    // DEBUG: printf version disabled (requires printf)
+    // Would print: Trit: string_value (int_value)
+    (void)trit;
 }
 
 void trit_debug(trit_t trit) {
-    printf("Trit Debug: value=%d, valid=%s, binary=0x%02x\n", 
-           trit.value, trit.valid ? "true" : "false", trit_to_binary(trit));
+    // DEBUG: printf version disabled (requires printf)
+    // Would print: value, valid, binary representation
+    (void)trit;
 }
 
 bool trit_is_positive(trit_t trit) {

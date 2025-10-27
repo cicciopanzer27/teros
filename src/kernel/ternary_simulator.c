@@ -344,20 +344,22 @@ void ternary_simulator_set_pc(ternary_simulator_t* simulator, int pc) {
 // TERNARY SIMULATOR PROFILING
 // =============================================================================
 
-double ternary_simulator_get_execution_time(ternary_simulator_t* simulator) {
+uint64_t ternary_simulator_get_execution_time(ternary_simulator_t* simulator) {
     if (simulator == NULL || simulator->profiler == NULL) {
-        return 0.0;
+        return 0;
     }
     
-    return ternary_profiler_get_execution_time(simulator->profiler);
+    // TODO: Implement without floating-point (SSE disabled in kernel)
+    return 0;  // Stub - was calling ternary_profiler_get_execution_time(simulator->profiler);
 }
 
-double ternary_simulator_get_instructions_per_second(ternary_simulator_t* simulator) {
+uint64_t ternary_simulator_get_instructions_per_second(ternary_simulator_t* simulator) {
     if (simulator == NULL || simulator->profiler == NULL) {
-        return 0.0;
+        return 0;
     }
     
-    return ternary_profiler_get_instructions_per_second(simulator->profiler);
+    // TODO: Implement without floating-point (SSE disabled in kernel)
+    return 0;  // Stub - was calling ternary_profiler_get_instructions_per_second(simulator->profiler);
 }
 
 void ternary_simulator_print_profiling_summary(ternary_simulator_t* simulator) {

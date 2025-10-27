@@ -147,6 +147,7 @@ char* ternary_transpiler_transpile_to_c(ternary_transpiler_t* transpiler) {
 }
 
 char* ternary_transpiler_format_instruction_c(ternary_transpiler_t* transpiler, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (transpiler == NULL || instruction == NULL) {
         return NULL;
     }
@@ -301,6 +302,7 @@ char* ternary_transpiler_transpile_to_python(ternary_transpiler_t* transpiler) {
 }
 
 char* ternary_transpiler_format_instruction_python(ternary_transpiler_t* transpiler, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (transpiler == NULL || instruction == NULL) {
         return NULL;
     }
@@ -454,6 +456,7 @@ char* ternary_transpiler_transpile_to_javascript(ternary_transpiler_t* transpile
 }
 
 char* ternary_transpiler_format_instruction_javascript(ternary_transpiler_t* transpiler, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (transpiler == NULL || instruction == NULL) {
         return NULL;
     }
@@ -605,6 +608,7 @@ char* ternary_transpiler_transpile_to_rust(ternary_transpiler_t* transpiler) {
 }
 
 char* ternary_transpiler_format_instruction_rust(ternary_transpiler_t* transpiler, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (transpiler == NULL || instruction == NULL) {
         return NULL;
     }
@@ -759,6 +763,7 @@ char* ternary_transpiler_transpile_to_go(ternary_transpiler_t* transpiler) {
 }
 
 char* ternary_transpiler_format_instruction_go(ternary_transpiler_t* transpiler, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (transpiler == NULL || instruction == NULL) {
         return NULL;
     }

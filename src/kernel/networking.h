@@ -12,6 +12,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+// Define ssize_t for networking
+#ifndef _SSIZE_T_DEFINED
+#define _SSIZE_T_DEFINED
+typedef int64_t ssize_t;
+#endif
+
 // =============================================================================
 // IP ADDRESSES
 // =============================================================================

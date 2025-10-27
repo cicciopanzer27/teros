@@ -7,6 +7,7 @@
 
 #include "vmm.h"
 #include "pmm.h"
+#include "kmalloc.h"
 #include "console.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,7 +157,7 @@ void vmm_free_page_table(ternary_page_table_t* table) {
     table->level = 0;
 }
 
-uint32_t vmm_get_page_table_index(uint32_t virtual_address, uint32_t level) {
+uint32_t vmm_get_page_table_index(uintptr_t virtual_address, uint32_t level) {
     switch (level) {
         case 0: return (virtual_address >> 12) & 0x3FF;  // PT
         case 1: return (virtual_address >> 22) & 0x3FF;  // PD
@@ -287,6 +288,7 @@ uint32_t vmm_get_physical_address(uint32_t virtual_address) {
 // =============================================================================
 
 void vmm_invalidate_tlb_entry(uint32_t virtual_address) {
+    (void)virtual_address;
     // Invalidate TLB entry for virtual address
     // This is a simplified implementation
     vmm_state.tlb_entries--;
@@ -298,6 +300,8 @@ void vmm_invalidate_tlb(void) {
 }
 
 bool vmm_tlb_lookup(uint32_t virtual_address, uint32_t* physical_address) {
+    (void)virtual_address;
+    (void)physical_address;
     // TLB lookup
     // This is a simplified implementation
     vmm_state.tlb_misses++;
@@ -305,6 +309,8 @@ bool vmm_tlb_lookup(uint32_t virtual_address, uint32_t* physical_address) {
 }
 
 void vmm_tlb_insert(uint32_t virtual_address, uint32_t physical_address) {
+    (void)virtual_address;
+    (void)physical_address;
     // Insert TLB entry
     vmm_state.tlb_entries++;
     vmm_state.tlb_hits++;
@@ -346,7 +352,7 @@ bool vmm_handle_page_fault(uint32_t virtual_address, uint32_t error_code) {
     }
     
     // Map the page
-    if (vmm_map_page(virtual_address, (uint32_t)physical_page, flags)) {
+    if (vmm_map_page(virtual_address, (uintptr_t)physical_page, flags)) {
         vmm_state.page_faults_resolved++;
         return true;
     }

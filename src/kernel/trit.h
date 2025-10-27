@@ -175,7 +175,7 @@ int trit_to_int(trit_t trit);
  * @param trit The trit to convert
  * @return Float value
  */
-float trit_to_float(trit_t trit);
+int32_t trit_to_int(trit_t trit);
 
 /**
  * @brief Convert trit to boolean

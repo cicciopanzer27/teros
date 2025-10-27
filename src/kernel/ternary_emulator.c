@@ -265,20 +265,24 @@ void ternary_emulator_set_pc(ternary_emulator_t* emulator, int pc) {
 // TERNARY EMULATOR PROFILING
 // =============================================================================
 
-double ternary_emulator_get_execution_time(ternary_emulator_t* emulator) {
+uint64_t ternary_emulator_get_execution_time(ternary_emulator_t* emulator) {
     if (emulator == NULL || emulator->simulator == NULL) {
-        return 0.0;
+        return 0;
     }
     
-    return ternary_simulator_get_execution_time(emulator->simulator);
+    // TODO: Implement without floating point
+    // Can't call ternary_simulator_get_execution_time() because it returns double (SSE disabled in kernel)
+    return 0;
 }
 
-double ternary_emulator_get_instructions_per_second(ternary_emulator_t* emulator) {
+uint64_t ternary_emulator_get_instructions_per_second(ternary_emulator_t* emulator) {
     if (emulator == NULL || emulator->simulator == NULL) {
-        return 0.0;
+        return 0;
     }
     
-    return ternary_simulator_get_instructions_per_second(emulator->simulator);
+    // TODO: Implement without floating point
+    // Can't call ternary_simulator_get_instructions_per_second() because it returns double (SSE disabled in kernel)
+    return 0;
 }
 
 void ternary_emulator_print_profiling_summary(ternary_emulator_t* emulator) {

@@ -65,13 +65,13 @@ void interrupt_init(void);
  * @param handler Handler function
  * @return true on success
  */
-bool interrupt_register_handler(uint8_t interrupt_num, interrupt_handler_t handler);
+bool interrupt_register_handler(uint32_t interrupt_num, interrupt_handler_t handler);
 
 /**
  * @brief Unregister interrupt handler
  * @param interrupt_num Interrupt number
  */
-void interrupt_unregister_handler(uint8_t interrupt_num);
+void interrupt_unregister_handler(uint32_t interrupt_num);
 
 /**
  * @brief Enable interrupts
@@ -147,7 +147,7 @@ void idt_init(void);
  * @param base Handler address
  * @param privilege Privilege level required
  */
-void idt_set_entry(uint8_t index, uint64_t base, uint8_t privilege);
+void idt_set_entry(uint32_t index, uint64_t base, uint8_t privilege);
 
 /**
  * @brief Mask (disable) a hardware IRQ

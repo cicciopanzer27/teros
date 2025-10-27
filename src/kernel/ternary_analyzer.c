@@ -170,7 +170,7 @@ bool ternary_analyzer_analyze_complexity(ternary_analyzer_t* analyzer, size_t in
     
     // Analyze complexity
     for (size_t i = 0; i < instruction_count; i++) {
-        t3_instruction_t* instruction = ternary_compiler_get_instruction(analyler->compiler, i);
+        t3_instruction_t* instruction = ternary_compiler_get_instruction(analyzer->compiler, i);
         if (instruction != NULL && instruction->valid) {
             switch (instruction->opcode) {
                 case T3_OPCODE_JMP:

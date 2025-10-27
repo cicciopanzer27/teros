@@ -212,23 +212,26 @@ void ternary_profiler_print_function_counts(ternary_profiler_t* profiler) {
 // TERNARY PROFILER TIMING
 // =============================================================================
 
-double ternary_profiler_get_execution_time(ternary_profiler_t* profiler) {
+uint64_t ternary_profiler_get_execution_time(ternary_profiler_t* profiler) {
     if (profiler == NULL) {
-        return 0.0;
+        return 0;
     }
     
+    // TODO: Implement without floating-point (SSE disabled in kernel)
+    // Return milliseconds as uint64_t instead of seconds as double
     clock_t end_time = profiler->running ? clock() : profiler->end_time;
-    return ((double)(end_time - profiler->start_time)) / CLOCKS_PER_SEC;
+    return (uint64_t)(end_time - profiler->start_time);
 }
 
-double ternary_profiler_get_instructions_per_second(ternary_profiler_t* profiler) {
+uint64_t ternary_profiler_get_instructions_per_second(ternary_profiler_t* profiler) {
     if (profiler == NULL) {
-        return 0.0;
+        return 0;
     }
     
-    double execution_time = ternary_profiler_get_execution_time(profiler);
-    if (execution_time <= 0.0) {
-        return 0.0;
+    // TODO: Implement without floating-point (SSE disabled in kernel)
+    uint64_t execution_ticks = ternary_profiler_get_execution_time(profiler);
+    if (execution_ticks == 0) {
+        return 0;
     }
     
     size_t total_instructions = 0;
@@ -238,7 +241,8 @@ double ternary_profiler_get_instructions_per_second(ternary_profiler_t* profiler
         }
     }
     
-    return total_instructions / execution_time;
+    // Approximate: instructions per tick (will need scaling factor)
+    return total_instructions / execution_ticks;
 }
 
 // =============================================================================
@@ -341,10 +345,10 @@ void ternary_profiler_print_summary(ternary_profiler_t* profiler) {
     }
     
     printf("Ternary Profiler Summary:\n");
-    printf("  Execution Time: %.6f seconds\n", ternary_profiler_get_execution_time(profiler));
+    printf("  Execution Time: %lu ticks\n", (unsigned long)ternary_profiler_get_execution_time(profiler));
     printf("  Total Instructions: %zu\n", ternary_profiler_get_total_instructions(profiler));
     printf("  Total Functions: %zu\n", ternary_profiler_get_total_functions(profiler));
-    printf("  Instructions/Second: %.2f\n", ternary_profiler_get_instructions_per_second(profiler));
+    printf("  Instructions/Second: %lu\n", (unsigned long)ternary_profiler_get_instructions_per_second(profiler));
     
     uint8_t most_used_instruction = ternary_profiler_get_most_used_instruction(profiler);
     if (most_used_instruction != 0xFF) {
@@ -373,7 +377,7 @@ void ternary_profiler_debug(ternary_profiler_t* profiler) {
     printf("  Error Message: %s\n", profiler->error_message != NULL ? profiler->error_message : "None");
     printf("  Start Time: %ld\n", profiler->start_time);
     printf("  End Time: %ld\n", profiler->end_time);
-    printf("  Execution Time: %.6f seconds\n", ternary_profiler_get_execution_time(profiler));
+    printf("  Execution Time: %lu ticks\n", (unsigned long)ternary_profiler_get_execution_time(profiler));
     printf("  Instruction Count Capacity: %zu\n", profiler->instruction_count_capacity);
     printf("  Function Count Capacity: %zu\n", profiler->function_count_capacity);
     printf("  Total Instructions: %zu\n", ternary_profiler_get_total_instructions(profiler));

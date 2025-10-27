@@ -292,9 +292,13 @@ void scheduler_save_context(process_t* proc) {
         return;
     }
     
-    // Save TVM registers
+    // TODO: Implement TVM context save when TVM register API is available
+    // NOTE: process_t minimal definition in process.h doesn't include tvm field
+    // Would need to access struct process_internal from process.c or extend process_t
+    (void)proc;  // Suppress unused parameter warning
+    
+    /* STUBBED - TVM context functions not yet implemented:
     if (proc->tvm != NULL) {
-        // Save TVM CPU state (registers, flags, PC, SP)
         tvm_context_t* ctx = &proc->tvm_context;
         ctx->r0 = tvm_get_register(proc->tvm, TVM_REG_R0);
         ctx->r1 = tvm_get_register(proc->tvm, TVM_REG_R1);
@@ -304,10 +308,10 @@ void scheduler_save_context(process_t* proc) {
         ctx->sp = tvm_get_register(proc->tvm, TVM_REG_SP);
         ctx->flags = tvm_get_flags(proc->tvm);
     }
-    
     console_puts("SCHED: Saved context for process ");
     console_puts(proc->name);
     console_puts("\n");
+    */
 }
 
 void scheduler_restore_context(process_t* proc) {
@@ -315,7 +319,12 @@ void scheduler_restore_context(process_t* proc) {
         return;
     }
     
-    // Restore TVM registers
+    // TODO: Implement TVM context restore when TVM register API is available
+    // NOTE: process_t minimal definition in process.h doesn't include tvm field
+    // Would need to access struct process_internal from process.c or extend process_t
+    (void)proc;  // Suppress unused parameter warning
+    
+    /* STUBBED - TVM context functions not yet implemented:
     if (proc->tvm != NULL && proc->tvm_context_initialized) {
         tvm_context_t* ctx = &proc->tvm_context;
         tvm_set_register(proc->tvm, TVM_REG_R0, ctx->r0);
@@ -326,10 +335,10 @@ void scheduler_restore_context(process_t* proc) {
         tvm_set_register(proc->tvm, TVM_REG_SP, ctx->sp);
         tvm_set_flags(proc->tvm, ctx->flags);
     }
-    
     console_puts("SCHED: Restored context for process ");
     console_puts(proc->name);
     console_puts("\n");
+    */
 }
 
 // =============================================================================

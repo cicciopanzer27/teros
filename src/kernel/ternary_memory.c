@@ -285,38 +285,22 @@ void ternary_memory_set_read_only(ternary_memory_t* memory, bool read_only) {
 // =============================================================================
 
 void ternary_memory_print(ternary_memory_t* memory, size_t start_address, size_t count) {
+    // DEBUG: printf version disabled (requires printf)
     if (memory == NULL || memory->data == NULL) {
-        printf("NULL Ternary Memory\n");
         return;
     }
-    
-    if (start_address + count > memory->size) {
-        count = memory->size - start_address;
-    }
-    
-    printf("Ternary Memory [%zu-%zu]: ", start_address, start_address + count - 1);
-    for (size_t i = 0; i < count; i++) {
-        printf("%s ", trit_to_string(memory->data[start_address + i]));
-    }
-    printf("\n");
+    // Would print memory range [start_address, start_address+count-1]
+    (void)start_address;
+    (void)count;
 }
 
 void ternary_memory_debug(ternary_memory_t* memory) {
+    // DEBUG: printf version disabled (requires printf)
     if (memory == NULL) {
-        printf("Ternary Memory Debug: NULL\n");
         return;
     }
-    
-    printf("Ternary Memory Debug:\n");
-    printf("  Size: %zu\n", memory->size);
-    printf("  Used: %zu\n", memory->used);
-    printf("  Free: %zu\n", memory->size - memory->used);
-    printf("  Read Only: %s\n", memory->read_only ? "true" : "false");
-    
-    printf("  Data (first 16 words):\n");
-    for (size_t i = 0; i < 16 && i < memory->size; i++) {
-        printf("    [%zu]: %s\n", i, trit_to_string(memory->data[i]));
-    }
+    // Would print size, used, free, read_only, and first 16 words
+    (void)memory;
 }
 
 // =============================================================================

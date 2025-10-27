@@ -70,8 +70,10 @@ static inline int syscall3(int num, int arg1, int arg2, int arg3) {
     return ret;
 }
 
-int _exit(int code) {
-    return syscall1(SYS_EXIT, code);
+void _exit(int code) {
+    syscall1(SYS_EXIT, code);
+    // Should never return, but add infinite loop for safety
+    while(1) {}
 }
 
 int fork(void) {
@@ -79,24 +81,27 @@ int fork(void) {
 }
 
 int execve(const char* path, char* const argv[], char* const envp[]) {
+    (void)path;
+    (void)argv;
+    (void)envp;
     // Stub implementation
     return -1;
 }
 
 int wait(int* status) {
-    return syscall1(SYS_WAIT, (int)status);
+    return syscall1(SYS_WAIT, (uintptr_t)status);
 }
 
 ssize_t read(int fd, void* buf, size_t count) {
-    return syscall3(SYS_READ, fd, (int)buf, count);
+    return syscall3(SYS_READ, fd, (uintptr_t)buf, count);
 }
 
 ssize_t write(int fd, const void* buf, size_t count) {
-    return syscall3(SYS_WRITE, fd, (int)buf, count);
+    return syscall3(SYS_WRITE, fd, (uintptr_t)buf, count);
 }
 
 int open(const char* pathname, int flags) {
-    return syscall2(SYS_OPEN, (int)pathname, flags);
+    return syscall2(SYS_OPEN, (uintptr_t)pathname, flags);
 }
 
 int close(int fd) {
@@ -105,16 +110,25 @@ int close(int fd) {
 
 // Lambda³ system call wrappers
 int sys_lambda_reduce(const char* expr, char* result, size_t max_len) {
+    (void)expr;
+    (void)result;
+    (void)max_len;
     // Lambda reduction syscall
     return -1; // Stub implementation
 }
 
 int sys_lambda_typecheck(const char* expr, char* type, size_t max_len) {
+    (void)expr;
+    (void)type;
+    (void)max_len;
     // Lambda typecheck syscall
     return -1; // Stub implementation
 }
 
 int sys_lambda_eval(const char* expr, char* result, size_t max_len) {
+    (void)expr;
+    (void)result;
+    (void)max_len;
     // Lambda evaluation syscall
     return -1; // Stub implementation
 }

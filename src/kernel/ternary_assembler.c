@@ -407,15 +407,15 @@ bool ternary_assembler_resolve_references(ternary_assembler_t* assembler) {
     for (size_t i = 0; i < assembler->instruction_count; i++) {
         t3_instruction_t* instruction = &assembler->instructions[i];
         
-        // Check for unresolved operand2
-        if (instruction->operand2 == -1) {
+        // Check for unresolved operand2 (uint8_t, so use 0xFF as sentinel)
+        if (instruction->operand2 == 0xFF) {
             // This is a forward reference that should have been resolved
             assembler->error = true;
             assembler->error_message = strdup("Unresolved forward reference");
             return false;
         }
         
-        // Check for unresolved immediate
+        // Check for unresolved immediate (int16_t, so -1 is valid)
         if (instruction->immediate == -1) {
             // This is a forward reference that should have been resolved
             assembler->error = true;

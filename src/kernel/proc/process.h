@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 // =============================================================================
 // PROCESS CONSTANTS
@@ -27,7 +28,18 @@ typedef enum {
     PROCESS_STATE_BLOCKED = -1    // Negative (-1)
 } process_state_t;
 
-// Process structure (forward declaration)
+// Process structure (minimal definition for syscalls)
+struct process {
+    uint32_t pid;
+    uint32_t ppid;
+    char name[64];
+    uint32_t file_descriptors[32];
+    uint32_t fd_count;
+    uintptr_t heap_ptr;
+    size_t memory_usage;
+    // ... more fields defined in process.c
+};
+
 typedef struct process process_t;
 
 // =============================================================================

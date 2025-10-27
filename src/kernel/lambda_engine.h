@@ -16,8 +16,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../hal/cpu_emulator.h"
-#include "../memory/ternary_memory.h"
+// TODO: Implement these components for full Lambda³ support
+// #include "../hal/cpu_emulator.h"
+// #include "../memory/ternary_memory.h"
 
 // ============================================================================
 // CORE DATA STRUCTURES

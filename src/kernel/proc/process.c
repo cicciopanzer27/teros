@@ -8,12 +8,19 @@
 #include "process.h"
 #include "tvm.h"
 #include "kmalloc.h"
+#include "timer.h"
 #include "console.h"
+#include "trit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+// Signal constants (POSIX-like)
+#define SIGTERM 15
+#define SIGKILL 9
+#define SIGCHLD 17
 
 // =============================================================================
 // PROCESS MANAGEMENT IMPLEMENTATION
@@ -24,15 +31,11 @@
 #define MAX_PROCESS_ARGS 16
 #define MAX_PROCESS_ENV 32
 
-// Process states (ternary)
-typedef enum {
-    PROCESS_STATE_RUNNING = 1,    // Positive (1)
-    PROCESS_STATE_READY = 0,      // Zero (0)
-    PROCESS_STATE_BLOCKED = -1    // Negative (-1)
-} process_state_t;
+// NOTE: process_state_t and struct process are defined in process.h
+// DO NOT redefine them here to avoid "conflicting types" errors
 
-// Process structure
-typedef struct {
+// Internal process structure (full definition for process.c only)
+struct process_internal {
     uint32_t pid;                    // Process ID
     uint32_t ppid;                   // Parent Process ID
     char name[MAX_PROCESS_NAME];     // Process name
@@ -42,13 +45,13 @@ typedef struct {
     uint32_t cpu_time;              // CPU time used
     uint32_t memory_usage;          // Memory usage in bytes
     tvm_t* tvm;                     // Ternary Virtual Machine
-    uint32_t stack_ptr;             // Stack pointer
-    uint32_t heap_ptr;              // Heap pointer
-    uint32_t code_start;            // Code start address
+    uintptr_t stack_ptr;            // Stack pointer
+    uintptr_t heap_ptr;             // Heap pointer
+    uintptr_t code_start;           // Code start address
     uint32_t code_size;             // Code size
-    uint32_t data_start;            // Data start address
+    uintptr_t data_start;           // Data start address
     uint32_t data_size;             // Data size
-    uint32_t bss_start;             // BSS start address
+    uintptr_t bss_start;            // BSS start address
     uint32_t bss_size;              // BSS size
     char** argv;                    // Command line arguments
     char** envp;                    // Environment variables
@@ -60,13 +63,16 @@ typedef struct {
     uint32_t pending_signals;       // Pending signals
     uint32_t file_descriptors[32];  // File descriptors
     uint32_t fd_count;              // File descriptor count
-} process_t;
+};
+
+// Type cast macro for compatibility
+#define PROC_INTERNAL(p) ((struct process_internal*)(p))
 
 typedef struct {
-    process_t* processes[MAX_PROCESSES];
+    struct process_internal* processes[MAX_PROCESSES];
     uint32_t process_count;
     uint32_t next_pid;
-    process_t* current_process;
+    struct process_internal* current_process;
     uint32_t kernel_process_pid;
     bool initialized;
 } process_manager_t;
@@ -104,6 +110,7 @@ void process_init(void) {
 // =============================================================================
 
 process_t* process_create(const char* name, uint32_t ppid) {
+    struct process_internal* proc = (struct process_internal*)kmalloc(sizeof(struct process_internal));
     if (!proc_mgr.initialized) {
         return NULL;
     }
@@ -119,18 +126,12 @@ process_t* process_create(const char* name, uint32_t ppid) {
     
     if (slot == -1) {
         console_puts("PROC: ERROR - No free process slots\n");
+        kfree(proc);
         return NULL;
     }
     
-    // Allocate process structure
-    process_t* proc = (process_t*)kmalloc(sizeof(process_t));
-    if (proc == NULL) {
-        console_puts("PROC: ERROR - Failed to allocate process structure\n");
-        return NULL;
-    }
-    
-    // Initialize process
-    memset(proc, 0, sizeof(process_t));
+    // Initialize process (already allocated above)
+    memset(proc, 0, sizeof(struct process_internal));
     
     proc->pid = proc_mgr.next_pid++;
     proc->ppid = ppid;
@@ -153,7 +154,7 @@ process_t* process_create(const char* name, uint32_t ppid) {
     }
     
     // Create TVM for process
-    proc->tvm = tvm_create();
+    proc->tvm = tvm_create(65536); // 64KB memory for TVM
     if (proc->tvm == NULL) {
         console_puts("PROC: ERROR - Failed to create TVM\n");
         kfree(proc);
@@ -161,7 +162,7 @@ process_t* process_create(const char* name, uint32_t ppid) {
     }
     
     // Allocate memory for process
-    proc->stack_ptr = (uint32_t)kmalloc(8192); // 8KB stack
+    proc->stack_ptr = (uintptr_t)kmalloc(8192); // 8KB stack
     if (proc->stack_ptr == 0) {
         console_puts("PROC: ERROR - Failed to allocate stack\n");
         tvm_destroy(proc->tvm);
@@ -169,7 +170,7 @@ process_t* process_create(const char* name, uint32_t ppid) {
         return NULL;
     }
     
-    proc->heap_ptr = (uint32_t)kmalloc(4096); // 4KB heap
+    proc->heap_ptr = (uintptr_t)kmalloc(4096); // 4KB heap
     if (proc->heap_ptr == 0) {
         console_puts("PROC: ERROR - Failed to allocate heap\n");
         kfree((void*)proc->stack_ptr);
@@ -179,7 +180,7 @@ process_t* process_create(const char* name, uint32_t ppid) {
     }
     
     // Update memory usage
-    proc->memory_usage = 8192 + 4096 + sizeof(process_t);
+    proc->memory_usage = 8192 + 4096 + sizeof(struct process_internal);
     
     // Add to process list
     proc_mgr.processes[slot] = proc;
@@ -191,10 +192,11 @@ process_t* process_create(const char* name, uint32_t ppid) {
     printf("%u", proc->pid);
     console_puts(")\n");
     
-    return proc;
+    return (process_t*)proc;
 }
 
-void process_destroy(process_t* proc) {
+void process_destroy(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -268,7 +270,8 @@ void process_destroy(process_t* proc) {
 // PROCESS STATE MANAGEMENT
 // =============================================================================
 
-void process_set_state(process_t* proc, process_state_t state) {
+void process_set_state(process_t* p, process_state_t state) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -285,7 +288,8 @@ void process_set_state(process_t* proc, process_state_t state) {
     console_puts("\n");
 }
 
-process_state_t process_get_state(process_t* proc) {
+process_state_t process_get_state(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return PROCESS_STATE_BLOCKED;
     }
@@ -293,7 +297,8 @@ process_state_t process_get_state(process_t* proc) {
     return proc->state;
 }
 
-void process_set_priority(process_t* proc, int32_t priority) {
+void process_set_priority(process_t* p, int32_t priority) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -311,7 +316,8 @@ void process_set_priority(process_t* proc, int32_t priority) {
     console_puts("\n");
 }
 
-int32_t process_get_priority(process_t* proc) {
+int32_t process_get_priority(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return 0;
     }
@@ -330,7 +336,7 @@ process_t* process_find_by_pid(uint32_t pid) {
     
     for (int i = 0; i < MAX_PROCESSES; i++) {
         if (proc_mgr.processes[i] != NULL && proc_mgr.processes[i]->pid == pid) {
-            return proc_mgr.processes[i];
+            return (process_t*)proc_mgr.processes[i];
         }
     }
     
@@ -338,11 +344,11 @@ process_t* process_find_by_pid(uint32_t pid) {
 }
 
 process_t* process_get_current(void) {
-    return proc_mgr.current_process;
+    return (process_t*)proc_mgr.current_process;
 }
 
-void process_set_current(process_t* proc) {
-    proc_mgr.current_process = proc;
+void process_set_current(process_t* p) {
+    proc_mgr.current_process = PROC_INTERNAL(p);
 }
 
 uint32_t process_get_count(void) {
@@ -357,7 +363,8 @@ uint32_t process_get_next_pid(void) {
 // PROCESS EXECUTION
 // =============================================================================
 
-bool process_load_program(process_t* proc, const char* filename) {
+bool process_load_program(process_t* p, const char* filename) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL || filename == NULL) {
         return false;
     }
@@ -372,7 +379,7 @@ bool process_load_program(process_t* proc, const char* filename) {
     // In a real system, we would load the executable file
     
     // Allocate code section
-    proc->code_start = (uint32_t)kmalloc(4096);
+    proc->code_start = (uintptr_t)kmalloc(4096);
     if (proc->code_start == 0) {
         console_puts("PROC: ERROR - Failed to allocate code section\n");
         return false;
@@ -381,7 +388,7 @@ bool process_load_program(process_t* proc, const char* filename) {
     proc->code_size = 4096;
     
     // Allocate data section
-    proc->data_start = (uint32_t)kmalloc(1024);
+    proc->data_start = (uintptr_t)kmalloc(1024);
     if (proc->data_start == 0) {
         console_puts("PROC: ERROR - Failed to allocate data section\n");
         kfree((void*)proc->code_start);
@@ -391,7 +398,7 @@ bool process_load_program(process_t* proc, const char* filename) {
     proc->data_size = 1024;
     
     // Allocate BSS section
-    proc->bss_start = (uint32_t)kmalloc(512);
+    proc->bss_start = (uintptr_t)kmalloc(512);
     if (proc->bss_start == 0) {
         console_puts("PROC: ERROR - Failed to allocate BSS section\n");
         kfree((void*)proc->code_start);
@@ -417,7 +424,8 @@ bool process_load_program(process_t* proc, const char* filename) {
     return true;
 }
 
-bool process_execute(process_t* proc) {
+bool process_execute(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return false;
     }
@@ -432,18 +440,18 @@ bool process_execute(process_t* proc) {
     console_puts("\n");
     
     // Set process as running
-    process_set_state(proc, PROCESS_STATE_RUNNING);
+    process_set_state((process_t*)proc, PROCESS_STATE_RUNNING);
     
     // Execute in TVM
-    trit_t result = tvm_execute(proc->tvm);
+    trit_t result = tvm_run(proc->tvm);
     
-    // Update CPU time
-    proc->cpu_time += tvm_get_instructions_executed(proc->tvm);
+    // Update CPU time (stub - tvm metrics not yet implemented)
+    proc->cpu_time += 1;  // TODO: implement tvm_get_instructions_executed
     
-    // Check execution result
-    if (result == TERNARY_NEGATIVE) {
+    // Check execution result using trit_get_value
+    if (trit_get_value(result) == TERNARY_NEGATIVE) {
         console_puts("PROC: Process execution failed\n");
-        process_set_state(proc, PROCESS_STATE_BLOCKED);
+        process_set_state((process_t*)proc, PROCESS_STATE_BLOCKED);
         return false;
     }
     
@@ -455,7 +463,8 @@ bool process_execute(process_t* proc) {
 // PROCESS TERMINATION
 // =============================================================================
 
-void process_terminate(process_t* proc, uint32_t exit_code) {
+void process_terminate(process_t* p, uint32_t exit_code) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -470,17 +479,18 @@ void process_terminate(process_t* proc, uint32_t exit_code) {
     
     proc->exit_code = exit_code;
     proc->terminated = true;
-    process_set_state(proc, PROCESS_STATE_BLOCKED);
+    process_set_state((process_t*)proc, PROCESS_STATE_BLOCKED);
     
     // Notify parent process
     process_t* parent = process_find_by_pid(proc->ppid);
     if (parent != NULL) {
         // Send signal to parent
-        process_send_signal(parent, SIGCHLD);
+        process_send_signal((process_t*)parent, SIGCHLD);
     }
 }
 
-bool process_is_terminated(process_t* proc) {
+bool process_is_terminated(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return true;
     }
@@ -488,7 +498,8 @@ bool process_is_terminated(process_t* proc) {
     return proc->terminated;
 }
 
-uint32_t process_get_exit_code(process_t* proc) {
+uint32_t process_get_exit_code(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return 0;
     }
@@ -500,7 +511,8 @@ uint32_t process_get_exit_code(process_t* proc) {
 // PROCESS SIGNALS
 // =============================================================================
 
-void process_send_signal(process_t* proc, uint32_t signal) {
+void process_send_signal(process_t* p, uint32_t signal) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -520,7 +532,8 @@ void process_send_signal(process_t* proc, uint32_t signal) {
     console_puts("\n");
 }
 
-void process_handle_signals(process_t* proc) {
+void process_handle_signals(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -532,12 +545,13 @@ void process_handle_signals(process_t* proc) {
             proc->pending_signals &= ~(1 << i);
             
             // Handle signal
-            process_handle_signal(proc, i);
+            process_handle_signal((process_t*)proc, i);
         }
     }
 }
 
-void process_handle_signal(process_t* proc, uint32_t signal) {
+void process_handle_signal(process_t* p, uint32_t signal) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         return;
     }
@@ -551,7 +565,7 @@ void process_handle_signal(process_t* proc, uint32_t signal) {
     switch (signal) {
         case SIGTERM:
         case SIGKILL:
-            process_terminate(proc, 128 + signal);
+            process_terminate((process_t*)proc, 128 + signal);
             break;
         case SIGCHLD:
             // Child process terminated
@@ -566,7 +580,8 @@ void process_handle_signal(process_t* proc, uint32_t signal) {
 // PROCESS DEBUG FUNCTIONS
 // =============================================================================
 
-void process_print_info(process_t* proc) {
+void process_print_info(process_t* p) {
+    struct process_internal* proc = PROC_INTERNAL(p);
     if (proc == NULL) {
         console_puts("PROC: NULL process\n");
         return;
@@ -618,7 +633,7 @@ void process_print_all(void) {
     
     for (int i = 0; i < MAX_PROCESSES; i++) {
         if (proc_mgr.processes[i] != NULL) {
-            process_print_info(proc_mgr.processes[i]);
+            process_print_info((process_t*)proc_mgr.processes[i]);
             console_puts("\n");
         }
     }

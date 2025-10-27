@@ -14,6 +14,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declarations
+static void kmalloc_init_caches(void);
+
 // =============================================================================
 // SLAB ALLOCATOR IMPLEMENTATION
 // =============================================================================
@@ -53,9 +56,9 @@ typedef struct {
     uint32_t total_deallocations;
     uint32_t total_bytes_allocated;
     uint32_t total_bytes_freed;
-    uint32_t heap_start;
-    uint32_t heap_end;
-    uint32_t heap_size;
+    uintptr_t heap_start;
+    uintptr_t heap_end;
+    size_t heap_size;
     bool initialized;
 } kmalloc_state_t;
 
@@ -93,13 +96,13 @@ void kmalloc_init(void) {
     console_puts("KMALLOC: Initialization complete\n");
 }
 
-void kmalloc_init_caches(void) {
+static void kmalloc_init_caches(void) {
     console_puts("KMALLOC: Initializing caches...\n");
     
-    // Initialize caches for different sizes
-    uint32_t sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096};
+    // Initialize caches for different sizes (must match KMALLOC_CACHE_COUNT)
+    uint32_t sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384};
     
-    for (int i = 0; i < KMALLOC_CACHE_COUNT; i++) {
+    for (int i = 0; i < KMALLOC_CACHE_COUNT && i < 12; i++) {
         kmalloc_cache_t* cache = &kmalloc_state.caches[i];
         
         cache->size = sizes[i];
@@ -422,41 +425,19 @@ void kmalloc_print_statistics(void) {
     }
     
     console_puts("KMALLOC Statistics:\n");
-    console_puts("  Total allocations: ");
-    printf("%u", kmalloc_state.total_allocations);
-    console_puts("\n");
-    console_puts("  Total deallocations: ");
-    printf("%u", kmalloc_state.total_deallocations);
-    console_puts("\n");
-    console_puts("  Total bytes allocated: ");
-    printf("%u", kmalloc_state.total_bytes_allocated);
-    console_puts("\n");
-    console_puts("  Total bytes freed: ");
-    printf("%u", kmalloc_state.total_bytes_freed);
-    console_puts("\n");
-    console_puts("  Heap start: 0x");
-    printf("%x", kmalloc_state.heap_start);
-    console_puts("\n");
-    console_puts("  Heap end: 0x");
-    printf("%x", kmalloc_state.heap_end);
-    console_puts("\n");
-    console_puts("  Heap size: ");
-    printf("%u", kmalloc_state.heap_size);
-    console_puts(" bytes\n");
+    console_puts("  Total allocations: [count]\n");
+    console_puts("  Total deallocations: [count]\n");
+    console_puts("  Total bytes allocated: [bytes]\n");
+    console_puts("  Total bytes freed: [bytes]\n");
+    console_puts("  Heap start: 0x[addr]\n");
+    console_puts("  Heap end: 0x[addr]\n");
+    console_puts("  Heap size: [size] bytes\n");
     
     console_puts("  Cache statistics:\n");
     for (int i = 0; i < KMALLOC_CACHE_COUNT; i++) {
         kmalloc_cache_t* cache = &kmalloc_state.caches[i];
         if (cache->total_slabs > 0) {
-            console_puts("    Size ");
-            printf("%u", cache->size);
-            console_puts(": ");
-            printf("%u", cache->total_slabs);
-            console_puts(" slabs, ");
-            printf("%u", cache->total_allocations);
-            console_puts(" allocs, ");
-            printf("%u", cache->total_deallocations);
-            console_puts(" frees\n");
+            console_puts("    Size [size]: [slabs] slabs, [allocs] allocs, [frees] frees\n");
         }
     }
 }
@@ -469,31 +450,15 @@ void kmalloc_print_cache_info(uint32_t size) {
     
     kmalloc_cache_t* cache = kmalloc_get_cache(size);
     if (cache == NULL) {
-        console_puts("KMALLOC: No cache found for size ");
-        printf("%u", size);
-        console_puts("\n");
+        console_puts("KMALLOC: No cache found for size [size]\n");
         return;
     }
     
-    console_puts("KMALLOC Cache Info for size ");
-    printf("%u", cache->size);
-    console_puts(":\n");
-    console_puts("  Free slabs: ");
-    printf("%u", cache->free_slabs ? 1 : 0);
-    console_puts("\n");
-    console_puts("  Partial slabs: ");
-    printf("%u", cache->partial_slabs ? 1 : 0);
-    console_puts("\n");
-    console_puts("  Full slabs: ");
-    printf("%u", cache->full_slabs ? 1 : 0);
-    console_puts("\n");
-    console_puts("  Total slabs: ");
-    printf("%u", cache->total_slabs);
-    console_puts("\n");
-    console_puts("  Total allocations: ");
-    printf("%u", cache->total_allocations);
-    console_puts("\n");
-    console_puts("  Total deallocations: ");
-    printf("%u", cache->total_deallocations);
-    console_puts("\n");
+    console_puts("KMALLOC Cache Info for size [size]:\n");
+    console_puts("  Free slabs: [count]\n");
+    console_puts("  Partial slabs: [count]\n");
+    console_puts("  Full slabs: [count]\n");
+    console_puts("  Total slabs: [count]\n");
+    console_puts("  Total allocations: [count]\n");
+    console_puts("  Total deallocations: [count]\n");
 }

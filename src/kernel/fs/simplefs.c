@@ -29,43 +29,12 @@
 #define SIMPLEFS_MAX_BLOCKS 1024
 #define SIMPLEFS_MAX_INODES 256
 
-// Superblock structure
-typedef struct {
-    uint32_t magic;
-    uint32_t version;
-    uint32_t block_size;
-    uint32_t total_blocks;
-    uint32_t total_inodes;
-    uint32_t free_blocks;
-    uint32_t free_inodes;
-    uint32_t inode_bitmap_block;
-    uint32_t data_bitmap_block;
-    uint32_t inode_table_block;
-    uint32_t root_inode;
-} simplefs_superblock_t;
+// =============================================================================
+// DATA STRUCTURES (simplefs_superblock_t, simplefs_inode_t, simplefs_dirent_t
+// are defined in simplefs.h to avoid conflicting types)
+// =============================================================================
 
-// Inode structure
-typedef struct {
-    uint32_t mode;           // File type and permissions
-    uint32_t uid;            // User ID
-    uint32_t gid;            // Group ID
-    uint32_t size;           // File size in bytes
-    uint32_t blocks;         // Number of blocks
-    uint64_t atime;          // Access time
-    uint64_t mtime;          // Modification time
-    uint64_t ctime;          // Creation time
-    uint32_t direct_blocks[12];  // Direct block pointers
-    uint32_t indirect_block;     // Indirect block pointer
-} simplefs_inode_t;
-
-// Directory entry structure
-typedef struct {
-    uint32_t inode;
-    uint8_t name[60];  // Max filename length
-    uint8_t type;      // File type
-} simplefs_dirent_t;
-
-// SimpleFS state
+// Internal SimpleFS state (not exposed in header)
 typedef struct {
     simplefs_superblock_t superblock;
     uint8_t* block_bitmap;
@@ -311,8 +280,9 @@ simplefs_inode_t* simplefs_read_inode(uint32_t inode_num) {
 
     // Read inode from inode table
     static simplefs_inode_t inode_buffer;
-    uint32_t inode_table_start = simplefs_state.superblock.inode_table_block * SIMPLEFS_BLOCK_SIZE;
-    uint32_t inode_offset = inode_num * sizeof(simplefs_inode_t);
+    // Calculate inode location (for future use when implementing actual disk I/O)
+    // uint32_t inode_table_start = simplefs_state.superblock.inode_table_block * SIMPLEFS_BLOCK_SIZE;
+    // uint32_t inode_offset = inode_num * sizeof(simplefs_inode_t);
 
     // For simplicity, use a static buffer (in real implementation, read from device)
     memset(&inode_buffer, 0, sizeof(simplefs_inode_t));

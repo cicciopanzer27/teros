@@ -10,6 +10,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
+
+// ssize_t is defined in vfs.h
+#ifndef _SSIZE_T_DEFINED
+#define _SSIZE_T_DEFINED
+typedef int64_t ssize_t;
+#endif
 
 // =============================================================================
 // PIPES

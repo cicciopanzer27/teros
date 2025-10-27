@@ -71,67 +71,61 @@ void* realloc(void* ptr, size_t new_size) {
     return new_ptr;
 }
 
-// String conversion
+// Simple kernel-safe atoi implementation (no dependency on __ctype_b_loc)
 int atoi(const char* str) {
-    if (str == NULL) {
-        return 0;
-    }
+    if (!str) return 0;
     
     int result = 0;
     int sign = 1;
-    int i = 0;
     
-    // Skip whitespace
-    while (str[i] == ' ' || str[i] == '\t') {
-        i++;
+    // Skip whitespace manually
+    while (*str == ' ' || *str == '\t' || *str == '\n' || *str == '\r') {
+        str++;
     }
     
-    // Check for sign
-    if (str[i] == '-') {
+    // Handle sign
+    if (*str == '-') {
         sign = -1;
-        i++;
-    } else if (str[i] == '+') {
-        i++;
+        str++;
+    } else if (*str == '+') {
+        str++;
     }
     
     // Convert digits
-    while (str[i] >= '0' && str[i] <= '9') {
-        result = result * 10 + (str[i] - '0');
-        i++;
+    while (*str >= '0' && *str <= '9') {
+        result = result * 10 + (*str - '0');
+        str++;
     }
     
-    return result * sign;
+    return sign * result;
 }
 
 long atol(const char* str) {
-    if (str == NULL) {
-        return 0;
-    }
+    if (!str) return 0;
     
     long result = 0;
     int sign = 1;
-    int i = 0;
     
-    // Skip whitespace
-    while (str[i] == ' ' || str[i] == '\t') {
-        i++;
+    // Skip whitespace manually
+    while (*str == ' ' || *str == '\t' || *str == '\n' || *str == '\r') {
+        str++;
     }
     
-    // Check for sign
-    if (str[i] == '-') {
+    // Handle sign
+    if (*str == '-') {
         sign = -1;
-        i++;
-    } else if (str[i] == '+') {
-        i++;
+        str++;
+    } else if (*str == '+') {
+        str++;
     }
     
     // Convert digits
-    while (str[i] >= '0' && str[i] <= '9') {
-        result = result * 10 + (str[i] - '0');
-        i++;
+    while (*str >= '0' && *str <= '9') {
+        result = result * 10 + (*str - '0');
+        str++;
     }
     
-    return result * sign;
+    return sign * result;
 }
 
 // Random number generation
@@ -147,7 +141,7 @@ int rand(void) {
 }
 
 // Exit handling
-static exit_func_t* exit_funcs[MAX_EXIT_FUNCS];
+static exit_func_t exit_funcs[MAX_EXIT_FUNCS];  // Array of function pointers, not pointers to function pointers
 static int exit_func_count = 0;
 
 int atexit(void (*func)(void)) {
@@ -161,52 +155,5 @@ int atexit(void (*func)(void)) {
     return 0;
 }
 
-void _exit(int status) {
-    // Call exit functions
-    for (int i = exit_func_count - 1; i >= 0; i--) {
-        if (exit_funcs[i] != NULL) {
-            exit_funcs[i]();
-        }
-    }
-    
-    // Call syscall to exit
-    // syscall(SYS_EXIT, status);
-    
-    // Should not return
-    while (1) {}
-}
-
-/**
- * @file stdlib.h
- * @brief Standard Library Header
- * @author TEROS Development Team
- * @date 2025
- */
-
-#ifndef STDLIB_H
-#define STDLIB_H
-
-#include <stddef.h>
-#include <stdint.h>
-
-#define HEAP_SIZE (1024 * 1024)  // 1MB heap
-#define MAX_EXIT_FUNCS 32
-
-typedef void (*exit_func_t)(void);
-
-void* malloc(size_t size);
-void free(void* ptr);
-void* calloc(size_t num, size_t size);
-void* realloc(void* ptr, size_t new_size);
-
-int atoi(const char* str);
-long atol(const char* str);
-
-void srand(unsigned int seed);
-int rand(void);
-
-int atexit(void (*func)(void));
-void _exit(int status);
-
-#endif // STDLIB_H
+// NOTE: _exit() is provided by syscalls.c - removed duplicate definition
 

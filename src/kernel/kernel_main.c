@@ -15,9 +15,27 @@
 #include "memory.h"
 #include "process.h"
 #include "scheduler.h"
+#include "ipc.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+// =============================================================================
+// FORWARD DECLARATIONS
+// =============================================================================
+
+void early_init(void);
+void init_memory_management(void);
+void init_interrupt_system(void);
+void init_process_system(void);
+void init_scheduler(void);
+void init_console(void);
+void init_timer(void);
+void init_ipc_system(void);
+void init_lambda3_integration(void);
+void print_boot_message(void);
+void kernel_main_loop(void);
+void kernel_panic(const char* message);
 
 // =============================================================================
 // KERNEL GLOBAL STATE
@@ -34,8 +52,8 @@ const char* kernel_build_date = __DATE__ " " __TIME__;
 // Kernel state
 static bool kernel_initialized = false;
 static uint64_t kernel_start_time = 0;
-static uint32_t kernel_heap_start = 0;
-static uint32_t kernel_heap_end = 0;
+static uintptr_t kernel_heap_start = 0;
+static uintptr_t kernel_heap_end = 0;
 
 // =============================================================================
 // KERNEL INITIALIZATION
@@ -113,7 +131,7 @@ void init_memory_management(void) {
     console_puts("Kernel heap initialized\n");
     
     // Allocate kernel heap
-    kernel_heap_start = (uint32_t)kmalloc(1024 * 1024); // 1MB
+    kernel_heap_start = (uintptr_t)kmalloc(1024 * 1024); // 1MB
     kernel_heap_end = kernel_heap_start + (1024 * 1024);
     
     console_puts("Memory management ready\n");
@@ -272,112 +290,155 @@ void register_irq_handlers(void) {
 // =============================================================================
 
 void exception_divide_by_zero(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Divide by Zero\n");
     kernel_panic("Divide by zero exception");
 }
 
 void exception_debug(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Debug\n");
     // Continue execution
 }
 
 void exception_nmi(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: NMI\n");
     kernel_panic("NMI exception");
 }
 
 void exception_breakpoint(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Breakpoint\n");
     // Continue execution
 }
 
 void exception_overflow(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Overflow\n");
     kernel_panic("Overflow exception");
 }
 
 void exception_bounds(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Bounds Check\n");
     kernel_panic("Bounds check exception");
 }
 
 void exception_invalid_opcode(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Invalid Opcode\n");
     kernel_panic("Invalid opcode exception");
 }
 
 void exception_device_not_available(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Device Not Available\n");
     kernel_panic("Device not available exception");
 }
 
 void exception_double_fault(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Double Fault\n");
     kernel_panic("Double fault exception");
 }
 
 void exception_coprocessor_segment_overrun(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Coprocessor Segment Overrun\n");
     kernel_panic("Coprocessor segment overrun exception");
 }
 
 void exception_invalid_tss(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Invalid TSS\n");
     kernel_panic("Invalid TSS exception");
 }
 
 void exception_segment_not_present(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Segment Not Present\n");
     kernel_panic("Segment not present exception");
 }
 
 void exception_stack_fault(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Stack Fault\n");
     kernel_panic("Stack fault exception");
 }
 
 void exception_general_protection(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: General Protection Fault\n");
     kernel_panic("General protection fault");
 }
 
 void exception_page_fault(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
     console_puts("EXCEPTION: Page Fault\n");
     // Handle page fault
     handle_page_fault(error_code);
 }
 
 void exception_reserved(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Reserved\n");
     kernel_panic("Reserved exception");
 }
 
 void exception_x87_fpu_error(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: x87 FPU Error\n");
     kernel_panic("x87 FPU error exception");
 }
 
 void exception_alignment_check(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Alignment Check\n");
     kernel_panic("Alignment check exception");
 }
 
 void exception_machine_check(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Machine Check\n");
     kernel_panic("Machine check exception");
 }
 
 void exception_simd_fpu_exception(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: SIMD FPU Exception\n");
     kernel_panic("SIMD FPU exception");
 }
 
 void exception_virtualization(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Virtualization\n");
     kernel_panic("Virtualization exception");
 }
 
 void exception_control_protection(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     console_puts("EXCEPTION: Control Protection\n");
     kernel_panic("Control protection exception");
 }
@@ -387,6 +448,8 @@ void exception_control_protection(uint32_t interrupt, uint32_t error_code) {
 // =============================================================================
 
 void irq_timer(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Timer interrupt - trigger scheduler
     scheduler_tick();
     
@@ -395,6 +458,8 @@ void irq_timer(uint32_t interrupt, uint32_t error_code) {
 }
 
 void irq_keyboard(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Keyboard interrupt
     handle_keyboard_interrupt();
     
@@ -403,66 +468,91 @@ void irq_keyboard(uint32_t interrupt, uint32_t error_code) {
 }
 
 void irq_cascade(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Cascade interrupt
     interrupt_send_eoi(2);
 }
 
 void irq_serial2(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Serial port 2 interrupt
     interrupt_send_eoi(3);
 }
 
 void irq_serial1(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Serial port 1 interrupt
     interrupt_send_eoi(4);
 }
 
 void irq_parallel2(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Parallel port 2 interrupt
     interrupt_send_eoi(5);
 }
 
 void irq_floppy(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Floppy disk interrupt
     interrupt_send_eoi(6);
 }
 
 void irq_parallel1(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Parallel port 1 interrupt
     interrupt_send_eoi(7);
 }
 
 void irq_rtc(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // RTC interrupt
     interrupt_send_eoi(8);
 }
 
 void irq_acpi(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // ACPI interrupt
     interrupt_send_eoi(9);
 }
 
 void irq_reserved(uint32_t interrupt, uint32_t error_code) {
+    (void)error_code;
     // Reserved interrupt
     interrupt_send_eoi(interrupt - 32);
 }
 
 void irq_mouse(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Mouse interrupt
     interrupt_send_eoi(12);
 }
 
 void irq_coprocessor(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Coprocessor interrupt
     interrupt_send_eoi(13);
 }
 
 void irq_primary_ide(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Primary IDE interrupt
     interrupt_send_eoi(14);
 }
 
 void irq_secondary_ide(uint32_t interrupt, uint32_t error_code) {
+    (void)interrupt;
+    (void)error_code;
     // Secondary IDE interrupt
     interrupt_send_eoi(15);
 }
@@ -543,6 +633,7 @@ void reserve_lambda3_memory(void) {
 }
 
 void handle_page_fault(uint32_t error_code) {
+    (void)error_code;
     // Handle page fault
     // This will be implemented in vmm.c
     console_puts("Page fault handled\n");

@@ -8,6 +8,7 @@
 #include "vfs.h"
 #include "console.h"
 #include "kmalloc.h"
+#include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -20,8 +21,9 @@
 #define VFS_MAX_FILE_DESCRIPTORS 1024
 #define VFS_MAX_PATH_LENGTH 512
 
-// Inode structure
-typedef struct {
+// NOTE: vfs_inode_t is forward-declared in vfs.h as 'typedef struct vfs_inode vfs_inode_t'
+// Here we define the actual struct vfs_inode
+struct vfs_inode {
     uint32_t inode_num;
     uint32_t mode;
     uint32_t uid;
@@ -31,9 +33,15 @@ typedef struct {
     uint64_t mtime;  // Modification time
     uint64_t ctime;  // Creation time
     void* fs_data;   // Filesystem-specific data
-} vfs_inode_t;
+};
 
-// VFS operations
+// Define off_t if not already defined (for kernel use)
+#ifndef _OFF_T_DEFINED
+typedef int64_t off_t;
+#define _OFF_T_DEFINED
+#endif
+
+// VFS operations (internal structure)
 typedef struct {
     int (*mount)(vfs_fs_t* fs, const char* source, const char* target);
     int (*umount)(vfs_fs_t* fs);
@@ -45,7 +53,7 @@ typedef struct {
     ssize_t (*read)(vfs_file_t* file, void* buf, size_t count);
     ssize_t (*write)(vfs_file_t* file, const void* buf, size_t count);
     off_t (*lseek)(vfs_file_t* file, off_t offset, int whence);
-    int (*readdir)(vfs_dir_t* dir, pajm_t* entry);
+    int (*readdir)(vfs_dir_t* dir, void* entry);  // Fixed: pajm_t -> void*
 } vfs_ops_t;
 
 // VFS filesystem structure
@@ -130,10 +138,11 @@ void vfs_init(void) {
 // FILESYSTEM REGISTRATION
 // =============================================================================
 
-int vfs_register_filesystem(const char* name, vfs_ops_t* ops) {
+int vfs_register_filesystem(const char* name, void* ops) {
     if (!vfs_state.initialized || name == NULL || ops == NULL) {
         return -1;
     }
+    vfs_ops_t* vfs_ops = (vfs_ops_t*)ops;  // Cast from void*
     
     if (vfs_state.filesystem_count >= VFS_MAX_FILESYSTEMS) {
         console_puts("VFS: ERROR - Maximum filesystems reached\n");
@@ -148,7 +157,7 @@ int vfs_register_filesystem(const char* name, vfs_ops_t* ops) {
     }
     
     fs->name = name;
-    fs->ops = ops;
+    fs->ops = vfs_ops;  // Use casted pointer
     fs->initialized = true;
     fs->fs_data = NULL;
     fs->next = NULL;
@@ -182,6 +191,7 @@ vfs_fs_t* vfs_find_filesystem(const char* name) {
 // =============================================================================
 
 int vfs_mount(const char* source, const char* target, const char* fs_type, uint32_t flags) {
+    (void)flags;  // Unused for now - future mount options
     if (!vfs_state.initialized || source == NULL || target == NULL || fs_type == NULL) {
         return -1;
     }
@@ -315,7 +325,7 @@ vfs_inode_t* vfs_lookup(const char* path) {
     // Find mount point
     vfs_mount_t* mount = vfs_find_mount(path);
     if (mount == NULL || mount->fs == NULL) {
-        console_etings("VFS: ERROR - No mount point found\n");
+        console_puts("VFS: ERROR - No mount point found\n");
         return NULL;
     }
     
@@ -414,27 +424,8 @@ ssize_t vfs_write(vfs_file_t* file, const void* buf, size_t count) {
 // HELPERS
 // =============================================================================
 
-static int strcmp(const char* a, const char* b) {
-    while (*a && *b && *a == *b) {
-        a++;
-        b++;
-    }
-    return *a - *b;
-}
-
-static int strncmp(const char* a, const char* b, size_t n) {
-    while (n-- > 0 && *a && *b && *a == *b) {
-        a++;
-        b++;
-    }
-    return n == 0 ? 0 : (*a - *b);
-}
-
-static size_t strlen(const char* s) {
-    size_t len = 0;
-    while (s[len]) len++;
-    return len;
-}
+// NOTE: strcmp, strncmp, strlen are provided by #include <string.h>
+// Removed local implementations to avoid conflicting declarations
 
 bool vfs_is_initialized(void) {
     return vfs_state.initialized;

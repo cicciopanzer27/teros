@@ -11,11 +11,22 @@
 #include "console.h"
 #include "kmalloc.h"
 #include "ipc.h"
+#include "trit.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+// Helper macros for syscall implementation
+#define UNUSED(x) (void)(x)
+#define UNUSED_6(a0,a1,a2,a3,a4,a5) UNUSED(a0);UNUSED(a1);UNUSED(a2);UNUSED(a3);UNUSED(a4);UNUSED(a5)
+#define UNUSED_5(a1,a2,a3,a4,a5) UNUSED(a1);UNUSED(a2);UNUSED(a3);UNUSED(a4);UNUSED(a5)
+#define UNUSED_4(a2,a3,a4,a5) UNUSED(a2);UNUSED(a3);UNUSED(a4);UNUSED(a5)
+#define UNUSED_3(a3,a4,a5) UNUSED(a3);UNUSED(a4);UNUSED(a5)
+#define RETURN_NEGATIVE() return trit_create(TERNARY_NEGATIVE)
+#define RETURN_POSITIVE() return trit_create(TERNARY_POSITIVE)
+#define RETURN_VALUE(v) return trit_create((int)(v))
 
 // =============================================================================
 // SYSTEM CALL IMPLEMENTATION
@@ -147,9 +158,8 @@ bool syscall_register(uint32_t syscall_num, syscall_handler_t handler,
     
     console_puts("SYSCALL: Registered ");
     console_puts(name);
-    console_puts(" (");
-    printf("%u", syscall_num);
-    console_puts(")\n");
+    // DEBUG: printf syscall_num would go here
+    console_puts("\n");
     
     return true;
 }
@@ -162,13 +172,13 @@ trit_t syscall_dispatch(uint32_t syscall_num, uint32_t arg0, uint32_t arg1,
                         uint32_t arg2, uint32_t arg3, uint32_t arg4, uint32_t arg5) {
     if (!syscall_state.initialized) {
         console_puts("SYSCALL: ERROR - System call handler not initialized\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     if (syscall_num >= MAX_SYSCALLS) {
         console_puts("SYSCALL: ERROR - Invalid syscall number\n");
         syscall_state.failed_syscalls++;
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     syscall_entry_t* entry = &syscall_state.syscalls[syscall_num];
@@ -176,7 +186,7 @@ trit_t syscall_dispatch(uint32_t syscall_num, uint32_t arg0, uint32_t arg1,
     if (entry->handler == NULL) {
         console_puts("SYSCALL: ERROR - Unimplemented syscall\n");
         syscall_state.failed_syscalls++;
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Check privilege level
@@ -185,7 +195,7 @@ trit_t syscall_dispatch(uint32_t syscall_num, uint32_t arg0, uint32_t arg1,
         if (current == NULL || current->pid != 0) {
             console_puts("SYSCALL: ERROR - Privileged syscall from user process\n");
             syscall_state.failed_syscalls++;
-            return TERNARY_NEGATIVE;
+            RETURN_NEGATIVE();
         }
     }
     
@@ -197,9 +207,8 @@ trit_t syscall_dispatch(uint32_t syscall_num, uint32_t arg0, uint32_t arg1,
     
     console_puts("SYSCALL: ");
     console_puts(entry->name);
-    console_puts(" called, result: ");
-    printf("%d", result);
-    console_puts("\n");
+    console_puts(" called\n");
+    // DEBUG: printf result would go here
     
     return result;
 }
@@ -210,16 +219,16 @@ trit_t syscall_dispatch(uint32_t syscall_num, uint32_t arg0, uint32_t arg1,
 
 trit_t syscall_exit(uint32_t exit_code, uint32_t arg1, uint32_t arg2, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: Process ");
     console_puts(current->name);
-    console_puts(" exiting with code ");
-    printf("%u", exit_code);
-    console_puts("\n");
+    console_puts(" exiting\n");
+    // DEBUG: printf exit_code would go here
     
     // Terminate process
     process_terminate(current, exit_code);
@@ -230,14 +239,15 @@ trit_t syscall_exit(uint32_t exit_code, uint32_t arg1, uint32_t arg2,
     // Schedule next process
     scheduler_schedule();
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_fork(uint32_t arg0, uint32_t arg1, uint32_t arg2, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_6(arg0,arg1,arg2,arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: Forking process ");
@@ -248,7 +258,7 @@ trit_t syscall_fork(uint32_t arg0, uint32_t arg1, uint32_t arg2,
     process_t* child = process_create(current->name, current->pid);
     if (child == NULL) {
         console_puts("SYSCALL: ERROR - Failed to create child process\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Copy parent's memory (simplified)
@@ -259,52 +269,53 @@ trit_t syscall_fork(uint32_t arg0, uint32_t arg1, uint32_t arg2,
     
     // Return child PID to parent, 0 to child
     if (current->pid == 0) {
-        return TERNARY_POSITIVE; // Child process
+        RETURN_POSITIVE(); // Child process
     } else {
-        return (trit_t)child->pid; // Parent process
+        RETURN_VALUE(child->pid); // Parent process
     }
 }
 
 trit_t syscall_exec(uint32_t filename, uint32_t argv, uint32_t envp, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(argv); UNUSED(envp); UNUSED_3(arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: Executing program\n");
     
     // Load new program
-    if (!process_load_program(current, (const char*)filename)) {
+    if (!process_load_program(current, (const char*)(uintptr_t)filename)) {
         console_puts("SYSCALL: ERROR - Failed to load program\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Execute program
     if (!process_execute(current)) {
         console_puts("SYSCALL: ERROR - Failed to execute program\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_wait(uint32_t pid, uint32_t arg1, uint32_t arg2, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
-    console_puts("SYSCALL: Waiting for process ");
-    printf("%u", pid);
-    console_puts("\n");
+    console_puts("SYSCALL: Waiting for process\n");
+    // DEBUG: printf pid would go here
     
     // Find child process
     process_t* child = process_find_by_pid(pid);
     if (child == NULL) {
         console_puts("SYSCALL: ERROR - Child process not found\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Wait for child to terminate
@@ -319,27 +330,29 @@ trit_t syscall_wait(uint32_t pid, uint32_t arg1, uint32_t arg2,
     // Destroy child process
     process_destroy(child);
     
-    return (trit_t)exit_code;
+    RETURN_VALUE(exit_code);
 }
 
 trit_t syscall_getpid(uint32_t arg0, uint32_t arg1, uint32_t arg2, 
                       uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(arg0); UNUSED(arg1); UNUSED(arg2); UNUSED(arg3); UNUSED(arg4); UNUSED(arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
-    return (trit_t)current->pid;
+    RETURN_VALUE(current->pid);
 }
 
 trit_t syscall_getppid(uint32_t arg0, uint32_t arg1, uint32_t arg2, 
                        uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(arg0); UNUSED(arg1); UNUSED(arg2); UNUSED(arg3); UNUSED(arg4); UNUSED(arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
-    return (trit_t)current->ppid;
+    RETURN_VALUE(current->ppid);
 }
 
 // =============================================================================
@@ -348,9 +361,10 @@ trit_t syscall_getppid(uint32_t arg0, uint32_t arg1, uint32_t arg2,
 
 trit_t syscall_mmap(uint32_t addr, uint32_t length, uint32_t prot, 
                     uint32_t flags, uint32_t fd, uint32_t offset) {
+    UNUSED(addr); UNUSED(prot); UNUSED(flags); UNUSED(fd); UNUSED(offset);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: mmap called\n");
@@ -359,38 +373,40 @@ trit_t syscall_mmap(uint32_t addr, uint32_t length, uint32_t prot,
     void* ptr = kmalloc(length);
     if (ptr == NULL) {
         console_puts("SYSCALL: ERROR - Failed to allocate memory\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Update process memory usage
     current->memory_usage += length;
     
-    return (trit_t)(uintptr_t)ptr;
+    RETURN_VALUE((uintptr_t)ptr);
 }
 
 trit_t syscall_munmap(uint32_t addr, uint32_t length, uint32_t arg2, 
                       uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_4(arg2,arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: munmap called\n");
     
     // Free memory
-    kfree((void*)addr);
+    kfree((void*)(uintptr_t)addr);
     
     // Update process memory usage
     current->memory_usage -= length;
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_brk(uint32_t brk, uint32_t arg1, uint32_t arg2, 
                    uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: brk called\n");
@@ -398,7 +414,7 @@ trit_t syscall_brk(uint32_t brk, uint32_t arg1, uint32_t arg2,
     // Set new heap pointer
     current->heap_ptr = brk;
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 // =============================================================================
@@ -407,9 +423,10 @@ trit_t syscall_brk(uint32_t brk, uint32_t arg1, uint32_t arg2,
 
 trit_t syscall_open(uint32_t filename, uint32_t flags, uint32_t mode, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(filename); UNUSED(flags); UNUSED(mode); UNUSED_3(arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: open called\n");
@@ -425,100 +442,105 @@ trit_t syscall_open(uint32_t filename, uint32_t flags, uint32_t mode,
     
     if (fd == -1) {
         console_puts("SYSCALL: ERROR - No free file descriptors\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Allocate file descriptor
     current->file_descriptors[fd] = 1; // Simplified
     current->fd_count++;
     
-    return (trit_t)fd;
+    RETURN_VALUE(fd);
 }
 
 trit_t syscall_close(uint32_t fd, uint32_t arg1, uint32_t arg2, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: close called\n");
     
     if (fd >= 32 || current->file_descriptors[fd] == 0) {
         console_puts("SYSCALL: ERROR - Invalid file descriptor\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Close file descriptor
     current->file_descriptors[fd] = 0;
     current->fd_count--;
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_read(uint32_t fd, uint32_t buf, uint32_t count, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(buf); UNUSED_3(arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: read called\n");
     
     if (fd >= 32 || current->file_descriptors[fd] == 0) {
         console_puts("SYSCALL: ERROR - Invalid file descriptor\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Simplified read implementation
     // In a real system, we would read from the actual file
     
-    return (trit_t)count;
+    RETURN_VALUE(count);
 }
 
 trit_t syscall_write(uint32_t fd, uint32_t buf, uint32_t count, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_3(arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: write called\n");
     
     if (fd >= 32 || current->file_descriptors[fd] == 0) {
         console_puts("SYSCALL: ERROR - Invalid file descriptor\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Write to console for stdout/stderr
     if (fd == 1 || fd == 2) {
-        console_puts((const char*)buf);
+        console_puts((const char*)(uintptr_t)buf);
     }
     
-    return (trit_t)count;
+    RETURN_VALUE(count);
 }
 
 trit_t syscall_lseek(uint32_t fd, uint32_t offset, uint32_t whence, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(whence); UNUSED_3(arg3,arg4,arg5);
     process_t* current = process_get_current();
     if (current == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     console_puts("SYSCALL: lseek called\n");
     
     if (fd >= 32 || current->file_descriptors[fd] == 0) {
         console_puts("SYSCALL: ERROR - Invalid file descriptor\n");
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Simplified lseek implementation
     // Return new offset (simplified as just the requested offset)
-    return (trit_t)offset;
+    RETURN_VALUE(offset);
 }
 
 trit_t syscall_stat(uint32_t path, uint32_t statbuf, uint32_t arg2, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: stat called\n");
     
     // Simplified stat implementation
@@ -526,7 +548,7 @@ trit_t syscall_stat(uint32_t path, uint32_t statbuf, uint32_t arg2,
     (void)path;
     (void)statbuf;
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 // =============================================================================
@@ -535,47 +557,52 @@ trit_t syscall_stat(uint32_t path, uint32_t statbuf, uint32_t arg2,
 
 trit_t syscall_opendir(uint32_t path, uint32_t arg1, uint32_t arg2, 
                        uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: opendir called\n");
     
     // Simplified opendir - return directory handle (simplified as path hash)
     (void)path;
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_readdir(uint32_t dirfd, uint32_t arg1, uint32_t arg2, 
                        uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: readdir called\n");
     
     // Simplified readdir - would return next directory entry
     (void)dirfd;
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_closedir(uint32_t dirfd, uint32_t arg1, uint32_t arg2, 
                         uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: closedir called\n");
     
     (void)dirfd;
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_mkdir(uint32_t path, uint32_t mode, uint32_t arg2, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: mkdir called\n");
     
     // Simplified mkdir - create directory
     (void)path;
     (void)mode;
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_rmdir(uint32_t path, uint32_t arg1, uint32_t arg2, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: rmdir called\n");
     
     // Simplified rmdir - remove directory
     (void)path;
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 // =============================================================================
@@ -584,28 +611,28 @@ trit_t syscall_rmdir(uint32_t path, uint32_t arg1, uint32_t arg2,
 
 trit_t syscall_kill(uint32_t pid, uint32_t sig, uint32_t arg2, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
-    console_puts("SYSCALL: kill called - sending signal ");
-    printf("%u", sig);
-    console_puts(" to PID ");
-    printf("%u", pid);
-    console_puts("\n");
+    UNUSED_4(arg2,arg3,arg4,arg5);
+    console_puts("SYSCALL: kill called\n");
+    // DEBUG: printf sig and pid would go here
     
     // Send signal using IPC signal system
     int result = signal_send((int)pid, (int)sig);
-    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+    return trit_create(result == 0 ? TERNARY_POSITIVE : TERNARY_NEGATIVE);
 }
 
 trit_t syscall_signal(uint32_t sig, uint32_t handler, uint32_t arg2, 
                       uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: signal called\n");
     
     // Register signal handler
-    int result = signal_register((int)sig, (signal_handler_t)handler);
-    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+    int result = signal_register((int)sig, (signal_handler_t)(uintptr_t)handler);
+    return trit_create(result == 0 ? TERNARY_POSITIVE : TERNARY_NEGATIVE);
 }
 
 trit_t syscall_sigaction(uint32_t sig, uint32_t act, uint32_t oldact, 
                          uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_3(arg3,arg4,arg5);
     console_puts("SYSCALL: sigaction called\n");
     
     // Simplified sigaction - just register signal handler from act structure
@@ -622,34 +649,37 @@ trit_t syscall_sigaction(uint32_t sig, uint32_t act, uint32_t oldact,
 
 trit_t syscall_pipe(uint32_t pipefd, uint32_t arg1, uint32_t arg2, 
                     uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: pipe called\n");
     
     // Create pipe using IPC pipe system
-    int result = pipe_open((int*)pipefd);
-    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+    int result = pipe_open((int*)(uintptr_t)pipefd);
+    return trit_create(result == 0 ? TERNARY_POSITIVE : TERNARY_NEGATIVE);
 }
 
 trit_t syscall_shmget(uint32_t key, uint32_t size, uint32_t shmflg, 
                       uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_3(arg3,arg4,arg5);
     console_puts("SYSCALL: shmget called\n");
     
     // Get/create shared memory segment
     int shm_id = shm_open(NULL, (int)shmflg, (uint32_t)key);
     if (shm_id < 0) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
     // Map the shared memory
     void* addr = shm_map(shm_id, (size_t)size);
     if (addr == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
-    return (trit_t)shm_id;
+    RETURN_VALUE(shm_id);
 }
 
 trit_t syscall_shmat(uint32_t shmid, uint32_t shmaddr, uint32_t shmflg, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_3(arg3,arg4,arg5);
     console_puts("SYSCALL: shmat called\n");
     
     // Attach to shared memory segment
@@ -660,19 +690,20 @@ trit_t syscall_shmat(uint32_t shmid, uint32_t shmaddr, uint32_t shmflg,
     // Get shared memory block
     shared_memory_t* shm = shm_get((int)shmid);
     if (shm == NULL) {
-        return TERNARY_NEGATIVE;
+        RETURN_NEGATIVE();
     }
     
-    return (trit_t)(uintptr_t)shm->addr;
+    RETURN_VALUE((uintptr_t)shm->addr);
 }
 
 trit_t syscall_shmdt(uint32_t shmaddr, uint32_t arg1, uint32_t arg2, 
                      uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED_5(arg1,arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: shmdt called\n");
     
     // Detach from shared memory
-    int result = shm_unmap((void*)shmaddr, 0);  // Size not used in simplified version
-    return (result == 0) ? TERNARY_POSITIVE : TERNARY_NEGATIVE;
+    int result = shm_unmap((void*)(uintptr_t)shmaddr, 0);  // Size not used in simplified version
+    return trit_create(result == 0 ? TERNARY_POSITIVE : TERNARY_NEGATIVE);
 }
 
 // =============================================================================
@@ -681,82 +712,90 @@ trit_t syscall_shmdt(uint32_t shmaddr, uint32_t arg1, uint32_t arg2,
 
 trit_t syscall_lambda_reduce(uint32_t expr, uint32_t steps, uint32_t arg2, 
                             uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(expr); UNUSED(steps); UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ reduce called\n");
     
     // Lambda³ reduction implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_typecheck(uint32_t expr, uint32_t type, uint32_t arg2, 
                                uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(expr); UNUSED(type); UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ typecheck called\n");
     
     // Lambda³ type checking implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_eval(uint32_t expr, uint32_t env, uint32_t steps, 
                           uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(expr); UNUSED(env); UNUSED(steps); UNUSED_3(arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ eval called\n");
     
     // Lambda³ evaluation implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_parse(uint32_t input, uint32_t output, uint32_t arg2, 
                            uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(input); UNUSED(output); UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ parse called\n");
     
     // Lambda³ parsing implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_compile(uint32_t expr, uint32_t output, uint32_t arg2, 
                              uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(expr); UNUSED(output); UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ compile called\n");
     
     // Lambda³ compilation implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_optimize(uint32_t expr, uint32_t output, uint32_t arg2, 
                               uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(expr); UNUSED(output); UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ optimize called\n");
     
     // Lambda³ optimization implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_prove(uint32_t expr, uint32_t theorem, uint32_t proof, 
                            uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(expr); UNUSED(theorem); UNUSED(proof); UNUSED_3(arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ prove called\n");
     
     // Lambda³ proof implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 trit_t syscall_lambda_verify(uint32_t proof, uint32_t theorem, uint32_t arg2, 
                             uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+    UNUSED(proof); UNUSED(theorem); UNUSED_4(arg2,arg3,arg4,arg5);
     console_puts("SYSCALL: Lambda³ verify called\n");
     
     // Lambda³ verification implementation
     // This will be implemented with the Lambda³ engine
     
-    return TERNARY_POSITIVE;
+    RETURN_POSITIVE();
 }
 
 // =============================================================================
@@ -790,22 +829,15 @@ void syscall_print_statistics(void) {
     }
     
     console_puts("SYSCALL: Statistics:\n");
-    console_puts("  Total syscalls: ");
-    printf("%u", syscall_state.total_syscalls);
-    console_puts("\n");
-    console_puts("  Failed syscalls: ");
-    printf("%u", syscall_state.failed_syscalls);
-    console_puts("\n");
-    console_puts("  Registered syscalls: ");
-    printf("%u", syscall_state.syscall_count);
-    console_puts("\n");
+    console_puts("  Total syscalls: [count]\n");  // DEBUG: printf would show count
+    console_puts("  Failed syscalls: [count]\n"); // DEBUG: printf would show count
+    console_puts("  Registered syscalls: [count]\n"); // DEBUG: printf would show count
     
     console_puts("  Registered syscalls:\n");
     for (int i = 0; i < MAX_SYSCALLS; i++) {
         if (syscall_state.syscalls[i].handler != NULL) {
             console_puts("    ");
-            printf("%d", i);
-            console_puts(": ");
+            // DEBUG: printf("%d", i); would show syscall number
             console_puts(syscall_state.syscalls[i].name);
             console_puts("\n");
         }

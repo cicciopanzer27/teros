@@ -6,6 +6,7 @@
  */
 
 #include "pmm.h"
+#include "kmalloc.h"
 #include "console.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +29,7 @@ typedef struct buddy_block {
     struct buddy_block* prev;
     uint32_t order;
     bool allocated;
-    uint32_t physical_address;
+    uintptr_t physical_address;
 } buddy_block_t;
 
 typedef struct buddy_list {
@@ -36,6 +37,10 @@ typedef struct buddy_list {
     buddy_block_t* tail;
     uint32_t count;
 } buddy_list_t;
+
+// Forward declarations (after type definitions)
+static void pmm_init_buddy_allocator(void);
+static void pmm_add_to_free_list(buddy_block_t* block, uint32_t order);
 
 typedef struct {
     uint32_t total_pages;
@@ -125,7 +130,7 @@ void pmm_init(void) {
     console_puts("PMM: Initialization complete\n");
 }
 
-void pmm_init_buddy_allocator(void) {
+static void pmm_init_buddy_allocator(void) {
     console_puts("PMM: Initializing buddy allocator...\n");
     
     // Start with all pages as order-0 blocks
@@ -161,7 +166,7 @@ void pmm_init_buddy_allocator(void) {
 // BUDDY ALLOCATOR HELPERS
 // =============================================================================
 
-void pmm_add_to_free_list(buddy_block_t* block, uint32_t order) {
+static void pmm_add_to_free_list(buddy_block_t* block, uint32_t order) {
     if (order >= PMM_BUDDY_ARRAY_SIZE) {
         return;
     }
@@ -346,7 +351,7 @@ void pmm_free_pages(void* address, uint32_t num_pages) {
         return;
     }
     
-    uint32_t physical_address = (uint32_t)address;
+    uintptr_t physical_address = (uintptr_t)address;
     
     // Find the block
     buddy_block_t* block = pmm_find_block_by_address(physical_address);

@@ -96,12 +96,15 @@ int security_set_uid(uid_t uid) {
 }
 
 bool security_check_permission(uint32_t mode, uid_t file_uid, gid_t file_gid) {
+    (void)file_gid;  // TODO: Implement group permission checking
+    
     if (!security_initialized) {
         return true;  // Allow if security not initialized
     }
     
     uid_t uid = security_get_current_uid();
     gid_t gid = security_get_current_gid();
+    (void)gid;  // TODO: Implement group permission checking
     
     // Root can do anything
     if (uid == 0) {

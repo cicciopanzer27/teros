@@ -157,14 +157,14 @@ void ternary_profiler_print_function_counts(ternary_profiler_t* profiler);
  * @param profiler The profiler instance
  * @return The execution time
  */
-double ternary_profiler_get_execution_time(ternary_profiler_t* profiler);
+uint64_t ternary_profiler_get_execution_time(ternary_profiler_t* profiler);
 
 /**
  * @brief Get instructions per second
  * @param profiler The profiler instance
  * @return The instructions per second
  */
-double ternary_profiler_get_instructions_per_second(ternary_profiler_t* profiler);
+uint64_t ternary_profiler_get_instructions_per_second(ternary_profiler_t* profiler);
 
 // =============================================================================
 // TERNARY PROFILER STATISTICS

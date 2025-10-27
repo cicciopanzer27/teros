@@ -388,12 +388,16 @@ bool lambda_alpha_equiv(LambdaTerm* t1, LambdaTerm* t2) {
 // ============================================================================
 
 int32_t lambda_encode_t3(LambdaTerm* term, uint8_t* bytecode, int32_t size) {
+    (void)term;
+    (void)bytecode;
+    (void)size;
     // TODO: Implement T3 bytecode generation
     // This will map lambda operations to T3-ISA opcodes
     return 0;
 }
 
 LambdaTerm* lambda_execute_on_tvm(LambdaTerm* term, void* tvm) {
+    (void)tvm;
     // TODO: Execute on TVM
     // For now, just use the C reducer
     ReductionContext ctx = {0};

@@ -8,8 +8,7 @@
  *  dest
  */
 void* memset(void* dest, int value, size_t count) {
-    // handle NULL pointer case
-    if (!dest) return dest;
+    // Note: dest is nonnull by attribute in string.h, no need to check
     
     // cast `value` to an unsigned char since it's the only type supported by TEROS
     unsigned char val = (unsigned char)value;
@@ -29,8 +28,7 @@ void* memset(void* dest, int value, size_t count) {
  *  dest
  */
 void* memcpy(void* restrict dest, const void* restrict src, size_t count) {
-    // handle NULL pointer case
-    if (!dest || !src) return dest;
+    // Note: dest and src are nonnull by attribute in string.h, no need to check
     
     // copy each byte of memory area pointed to by `src` into the memory area pointed to by `dest`
     for (size_t i = 0; i < count; i++) {
@@ -47,17 +45,17 @@ void* memcpy(void* restrict dest, const void* restrict src, size_t count) {
  *  dest
  */
 void* memmove(void* restrict dest, const void* restrict src, size_t count) {
-    // handle NULL pointer case
-    if (!dest || !src) return dest;
+    // Note: dest and src are nonnull by attribute in string.h, no need to check
     
     // handle overlaping cases
     if (dest < src) {
-        for (ptrdiff_t i = 0; i < count; i++) {
+        for (size_t i = 0; i < count; i++) {
             ((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
         }
     } else {
-        for (ptrdiff_t i = count - 1; i >= 0; i--) {
-            ((unsigned char*)dest)[i] = ((unsigned char*)src)[i];
+        // Use size_t to avoid signed/unsigned comparison warning
+        for (size_t i = count; i > 0; i--) {
+            ((unsigned char*)dest)[i - 1] = ((unsigned char*)src)[i - 1];
         }
     }
     
@@ -73,8 +71,7 @@ void* memmove(void* restrict dest, const void* restrict src, size_t count) {
  *  1 if `ptr1` is greater than `ptr2`
  */
 int memcmp(const void* ptr1, const void* ptr2, size_t count) {
-    // handle NULL pointer case
-    if (!ptr1 || !ptr2) return 0;
+    // Note: ptr1 and ptr2 are nonnull by attribute in string.h, no need to check
     
     // compare each byte of memory areas pointed to by `ptr1` and `ptr2`
     for (size_t i = 0; i < count; i++) {
@@ -95,8 +92,7 @@ int memcmp(const void* ptr1, const void* ptr2, size_t count) {
  *  a pointer to the found byte, or NULL if none is found
  */
 void* memchr(const void* ptr, int value, size_t count) {
-    // handle NULL pointer case
-    if (!ptr) return NULL;
+    // Note: ptr is nonnull by attribute in string.h, no need to check
     
     // cast `value` to an unsigned char since it's the only type supported by TEROS
     unsigned char val = (unsigned char)value;

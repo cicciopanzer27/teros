@@ -180,6 +180,7 @@ char* ternary_generator_generate_assembly(ternary_generator_t* generator) {
 }
 
 char* ternary_generator_format_instruction(ternary_generator_t* generator, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (generator == NULL || instruction == NULL) {
         return NULL;
     }

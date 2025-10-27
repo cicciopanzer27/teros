@@ -228,18 +228,18 @@ void ternary_emulator_set_pc(ternary_emulator_t* emulator, int pc);
 // =============================================================================
 
 /**
- * @brief Get execution time in seconds
+ * @brief Get execution time in ticks
  * @param emulator The emulator instance
- * @return The execution time
+ * @return The execution time in ticks (uint64_t)
  */
-double ternary_emulator_get_execution_time(ternary_emulator_t* emulator);
+uint64_t ternary_emulator_get_execution_time(ternary_emulator_t* emulator);
 
 /**
  * @brief Get instructions per second
  * @param emulator The emulator instance
- * @return The instructions per second
+ * @return The instructions per second (uint64_t)
  */
-double ternary_emulator_get_instructions_per_second(ternary_emulator_t* emulator);
+uint64_t ternary_emulator_get_instructions_per_second(ternary_emulator_t* emulator);
 
 /**
  * @brief Print profiling summary

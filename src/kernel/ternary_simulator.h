@@ -236,14 +236,14 @@ void ternary_simulator_set_pc(ternary_simulator_t* simulator, int pc);
  * @param simulator The simulator instance
  * @return The execution time
  */
-double ternary_simulator_get_execution_time(ternary_simulator_t* simulator);
+uint64_t ternary_simulator_get_execution_time(ternary_simulator_t* simulator);
 
 /**
  * @brief Get instructions per second
  * @param simulator The simulator instance
  * @return The instructions per second
  */
-double ternary_simulator_get_instructions_per_second(ternary_simulator_t* simulator);
+uint64_t ternary_simulator_get_instructions_per_second(ternary_simulator_t* simulator);
 
 /**
  * @brief Print profiling summary

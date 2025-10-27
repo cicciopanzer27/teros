@@ -84,7 +84,7 @@ int pipe_open(int pipefd[2]) {
 
 pipe_t* pipe_get(int pipe_id) {
     for (int i = 0; i < MAX_PIPES; i++) {
-        if (pipes[i].id == pipe_id && pipes[i].is_open) {
+        if (pipes[i].id == (uint32_t)pipe_id && pipes[i].is_open) {
             return &pipes[i];
         }
     }
@@ -245,6 +245,7 @@ int signal_send(int pid, int sig) {
 }
 
 int signal_dispatch(int pid, int sig) {
+    (void)pid;  // Unused for MVP
     signal_handler_t handler = signal_get_handler(sig);
     
     if (handler != NULL) {
@@ -305,7 +306,7 @@ int shm_open(const char* name, int oflag, uint32_t mode) {
 
 shared_memory_t* shm_get(int shm_id) {
     for (int i = 0; i < MAX_SHARED_MEMORY; i++) {
-        if (shm_blocks[i].id == shm_id && shm_blocks[i].is_valid) {
+        if (shm_blocks[i].id == (uint32_t)shm_id && shm_blocks[i].is_valid) {
             return &shm_blocks[i];
         }
     }
@@ -331,6 +332,7 @@ void* shm_map(int shm_id, size_t size) {
 }
 
 int shm_unmap(void* addr, size_t size) {
+    (void)size;  // Not used in simplified version
     for (int i = 0; i < MAX_SHARED_MEMORY; i++) {
         if (shm_blocks[i].addr == addr && shm_blocks[i].is_valid) {
             shm_blocks[i].ref_count--;
@@ -382,6 +384,9 @@ static void sem_init(void) {
 }
 
 int sem_open(const char* name, int oflag, uint32_t mode, uint32_t value) {
+    (void)name;   // For MVP, name not used
+    (void)oflag;  // For MVP, oflag not used
+    (void)mode;   // For MVP, mode not used
     // Find free slot
     int idx = -1;
     for (int i = 0; i < MAX_SEMAPHORES; i++) {
@@ -408,7 +413,7 @@ int sem_open(const char* name, int oflag, uint32_t mode, uint32_t value) {
 
 semaphore_t* sem_get(int sem_id) {
     for (int i = 0; i < MAX_SEMAPHORES; i++) {
-        if (semaphores[i].id == sem_id && semaphores[i].is_valid) {
+        if (semaphores[i].id == (uint32_t)sem_id && semaphores[i].is_valid) {
             return &semaphores[i];
         }
     }

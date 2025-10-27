@@ -309,54 +309,29 @@ void tvm_set_register(tvm_t* vm, int register_index, trit_t value) {
 // =============================================================================
 
 void tvm_print_status(tvm_t* vm) {
+    // DEBUG: printf version disabled (requires printf)
     if (vm == NULL) {
-        printf("TVM Status: NULL\n");
         return;
     }
-    
-    printf("TVM Status: running=%s, halted=%s, error=%s\n",
-           vm->running ? "true" : "false",
-           vm->halted ? "true" : "false",
-           vm->error ? "true" : "false");
-    
-    printf("Registers: ");
-    for (int i = 0; i < T3_REGISTER_COUNT; i++) {
-        printf("R%d=%s ", i, trit_to_string(vm->registers[i]));
-    }
-    printf("\n");
+    // Would print: running, halted, error status and all registers
+    (void)vm;
 }
 
 void tvm_print_memory(tvm_t* vm, size_t start, size_t count) {
+    // DEBUG: printf version disabled (requires printf)
     if (vm == NULL) return;
-    
-    printf("TVM Memory [%zu-%zu]: ", start, start + count - 1);
-    for (size_t i = start; i < start + count && i < vm->memory_size; i++) {
-        printf("%s ", trit_to_string(vm->memory[i]));
-    }
-    printf("\n");
+    // Would print memory range [start, start+count-1]
+    (void)start;
+    (void)count;
 }
 
 void tvm_debug(tvm_t* vm) {
+    // DEBUG: printf version disabled (requires printf)
     if (vm == NULL) {
-        printf("TVM Debug: NULL\n");
         return;
     }
-    
-    printf("TVM Debug:\n");
-    printf("  Memory Size: %zu\n", vm->memory_size);
-    printf("  Running: %s\n", vm->running ? "true" : "false");
-    printf("  Halted: %s\n", vm->halted ? "true" : "false");
-    printf("  Error: %s\n", vm->error ? "true" : "false");
-    
-    printf("  Registers:\n");
-    for (int i = 0; i < T3_REGISTER_COUNT; i++) {
-        printf("    R%d: %s\n", i, trit_to_string(vm->registers[i]));
-    }
-    
-    printf("  Memory (first 16 words):\n");
-    for (size_t i = 0; i < 16 && i < vm->memory_size; i++) {
-        printf("    [%zu]: %s\n", i, trit_to_string(vm->memory[i]));
-    }
+    // Would print: memory_size, running, halted, error, all registers, first 16 memory words
+    (void)vm;
 }
 
 // =============================================================================

@@ -362,30 +362,19 @@ void ternary_alu_clear_flags(ternary_alu_t* alu) {
 // =============================================================================
 
 void ternary_alu_print_flags(ternary_alu_t* alu) {
+    // DEBUG: printf version disabled (requires printf)
     if (alu == NULL) {
-        printf("ALU Flags: NULL\n");
         return;
     }
-    
-    printf("ALU Flags: overflow=%s, underflow=%s, zero=%s, negative=%s, positive=%s\n",
-           alu->overflow ? "true" : "false",
-           alu->underflow ? "true" : "false",
-           alu->zero ? "true" : "false",
-           alu->negative ? "true" : "false",
-           alu->positive ? "true" : "false");
+    // Would print: overflow, underflow, zero, negative, positive flags
+    (void)alu;
 }
 
 void ternary_alu_debug(ternary_alu_t* alu) {
+    // DEBUG: printf version disabled (requires printf)
     if (alu == NULL) {
-        printf("ALU Debug: NULL\n");
         return;
     }
-    
-    printf("ALU Debug:\n");
-    printf("  Flags: 0x%02x\n", alu->flags);
-    printf("  Overflow: %s\n", alu->overflow ? "true" : "false");
-    printf("  Underflow: %s\n", alu->underflow ? "true" : "false");
-    printf("  Zero: %s\n", alu->zero ? "true" : "false");
-    printf("  Negative: %s\n", alu->negative ? "true" : "false");
-    printf("  Positive: %s\n", alu->positive ? "true" : "false");
+    // Would print: flags, overflow, underflow, zero, negative, positive
+    (void)alu;
 }

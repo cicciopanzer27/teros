@@ -182,6 +182,8 @@ bool ternary_validator_validate_instruction(ternary_validator_t* validator, t3_i
 }
 
 bool ternary_validator_validate_operand(ternary_validator_t* validator, uint8_t operand, const char* name, size_t index) {
+    (void)name;
+    (void)index;
     if (validator == NULL) {
         return false;
     }
@@ -197,17 +199,14 @@ bool ternary_validator_validate_operand(ternary_validator_t* validator, uint8_t 
 }
 
 bool ternary_validator_validate_immediate(ternary_validator_t* validator, int16_t immediate, size_t index) {
+    (void)index;
+    (void)immediate;  // int16_t is always in valid range by definition
     if (validator == NULL) {
         return false;
     }
     
-    // Check for reasonable immediate values
-    if (immediate < -32768 || immediate > 32767) {
-        validator->error = true;
-        validator->error_message = strdup("Immediate value out of range");
-        validator->error_count++;
-        return false;
-    }
+    // Note: int16_t is always in range [-32768, 32767] by definition
+    // No need to check bounds
     
     return true;
 }

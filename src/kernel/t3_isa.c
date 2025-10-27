@@ -322,7 +322,8 @@ trit_t t3_execute_call(t3_instruction_t* instruction, t3_register_t* registers) 
     // Save return address to stack
     if (registers[T3_REGISTER_SP].valid && registers[T3_REGISTER_PC].valid) {
         int sp = trit_to_int(registers[T3_REGISTER_SP]);
-        int pc = trit_to_int(registers[T3_REGISTER_PC]);
+        // PC is read but not used currently - in full implementation would be pushed to stack
+        // int pc = trit_to_int(registers[T3_REGISTER_PC]);
         
         // Push PC to stack (simplified)
         registers[T3_REGISTER_SP] = trit_create(sp - 1);
@@ -334,6 +335,7 @@ trit_t t3_execute_call(t3_instruction_t* instruction, t3_register_t* registers) 
 }
 
 trit_t t3_execute_ret(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
     // Restore return address from stack
     if (registers[T3_REGISTER_SP].valid) {
         int sp = trit_to_int(registers[T3_REGISTER_SP]);
@@ -372,6 +374,8 @@ trit_t t3_execute_pop(t3_instruction_t* instruction, t3_register_t* registers) {
 // =============================================================================
 
 trit_t t3_execute_halt(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
+    (void)registers;
     // Halt execution
     return trit_create(TERNARY_NEUTRAL);
 }
@@ -381,6 +385,7 @@ trit_t t3_execute_halt(t3_instruction_t* instruction, t3_register_t* registers) 
 // =============================================================================
 
 trit_t t3_execute_syscall(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
     // Syscall interface - syscall number in operand1
     // Parameters in R1-R5, result in R0
     // Store return address for IRET
@@ -395,6 +400,7 @@ trit_t t3_execute_syscall(t3_instruction_t* instruction, t3_register_t* register
 }
 
 trit_t t3_execute_iret(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
     // Interrupt return - restore return address
     if (registers[T3_REGISTER_LR].valid) {
         registers[T3_REGISTER_PC] = registers[T3_REGISTER_LR];
@@ -403,12 +409,16 @@ trit_t t3_execute_iret(t3_instruction_t* instruction, t3_register_t* registers) 
 }
 
 trit_t t3_execute_cli(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
+    (void)registers;
     // Clear interrupt flag (CLI - Clear Interrupts)
     // Set interrupt disabled flag in status register
     return trit_create(TERNARY_POSITIVE);
 }
 
 trit_t t3_execute_sti(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
+    (void)registers;
     // Set interrupt flag (STI - Set Interrupts)
     // Clear interrupt disabled flag in status register
     return trit_create(TERNARY_POSITIVE);
@@ -433,6 +443,8 @@ trit_t t3_execute_rdtsc(t3_instruction_t* instruction, t3_register_t* registers)
 }
 
 trit_t t3_execute_int(t3_instruction_t* instruction, t3_register_t* registers) {
+    (void)instruction;
+    (void)registers;
     // Software interrupt - trigger interrupt vector
     // Immediate value specifies interrupt number
     // In a real implementation, this would call the interrupt handler
@@ -479,14 +491,12 @@ trit_t t3_execute_tst(t3_instruction_t* instruction, t3_register_t* registers) {
 // =============================================================================
 
 void t3_instruction_print(t3_instruction_t* instruction) {
+    // DEBUG: printf version disabled (requires printf)
     if (instruction == NULL) {
-        printf("NULL Instruction\n");
         return;
     }
-    
-    printf("T3 Instruction: opcode=%d, op1=%d, op2=%d, op3=%d, imm=%d, valid=%s\n",
-           instruction->opcode, instruction->operand1, instruction->operand2,
-           instruction->operand3, instruction->immediate, instruction->valid ? "true" : "false");
+    // Would print: opcode, operand1, operand2, operand3, immediate, valid
+    (void)instruction;
 }
 
 const char* t3_opcode_to_string(uint8_t opcode) {

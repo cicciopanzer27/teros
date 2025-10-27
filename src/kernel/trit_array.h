@@ -180,7 +180,7 @@ trit_array_t* trit_array_from_int(int value, size_t size);
  * @param array The trit array to convert
  * @return Float value
  */
-float trit_array_to_float(trit_array_t* array);
+int32_t trit_array_to_int(trit_array_t* array);
 
 // =============================================================================
 // TRIT ARRAY STRING OPERATIONS

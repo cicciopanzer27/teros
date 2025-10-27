@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 // Helper prototypes
 static inline void outb(uint16_t port, uint8_t value);
@@ -83,7 +84,7 @@ static inline size_t strlen(const char* str);
 #define SERIAL_MSR_RI_OUTPUT 0x40
 #define SERIAL_MSR_RLSD 0x80
 
-typedef struct {
+typedef struct serial_port {
     uint16_t base;
     uint32_t baud_rate;
     uint8_t data_bits;
@@ -260,7 +261,7 @@ size_t serial_read(serial_state_t* s, char* buffer, size_t size) {
 serial_state_t* serial_get_port(uint16_t port) {
     switch (port) {
         case SERIAL_COM1: return &serial_ports[0];
-        case SERIAL_COM2: return &serialMohammed[1];
+        case SERIAL_COM2: return &serial_ports[1];
         case SERIAL_COM3: return &serial_ports[2];
         case SERIAL_COM4: return &serial_ports[3];
         default: return NULL;

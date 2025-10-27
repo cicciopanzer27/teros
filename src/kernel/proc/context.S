@@ -37,11 +37,12 @@ context_switch:
     pushq %r14
     pushq %r15
     
-    # Save segment registers
-    pushq %ds
-    pushq %es
-    pushq %fs
-    pushq %gs
+    # Save segment registers (only %fs and %gs are relevant in x86-64 long mode)
+    # NOTE: %ds and %es cannot be pushed in 64-bit mode
+    # pushq %ds  # Not supported in 64-bit
+    # pushq %es  # Not supported in 64-bit
+    # In x86-64, only %fs and %gs are used (for TLS, etc.)
+    # For now, we skip saving segment registers as they're not critical for basic context switching
     
     # Save flags
     pushfq
@@ -55,11 +56,11 @@ context_switch:
     # Restore flags
     popfq
     
-    # Restore segment registers
-    popq %gs
-    popq %fs
-    popq %es
-    popq %ds
+    # Restore segment registers (only %fs and %gs are relevant in x86-64 long mode)
+    # NOTE: %ds and %es cannot be popped in 64-bit mode
+    # popq %es  # Not supported in 64-bit
+    # popq %ds  # Not supported in 64-bit
+    # For now, we skip restoring segment registers as they're not critical for basic context switching
     
     # Restore general purpose registers
     popq %r15

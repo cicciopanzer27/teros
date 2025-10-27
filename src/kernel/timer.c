@@ -9,6 +9,21 @@
 #include "console.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
+
+// =============================================================================
+// PORT I/O (Forward declarations)
+// =============================================================================
+
+static inline void outb(uint16_t port, uint8_t value) {
+    asm volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
 
 // =============================================================================
 // PIT IMPLEMENTATION
@@ -100,9 +115,8 @@ void timer_set_frequency(uint32_t freq) {
     outb(PIT_PORT_CHANNEL0_DATA, timer.divisor & 0xFF);
     outb(PIT_PORT_CHANNEL0_DATA, (timer.divisor >> 8) & 0xFF);
     
-    console_puts("TIMER: Frequency set to ");
-    printf("%u", freq);
-    console_puts(" Hz\n");
+    console_puts("TIMER: Frequency set to [Hz]\n");
+    // DEBUG: printf("%u", freq); would show frequency
 }
 
 uint32_t timer_get_frequency(void) {
@@ -133,19 +147,5 @@ uint32_t timer_get_uptime_sec(void) {
 
 bool timer_is_initialized(void) {
     return timer.initialized;
-}
-
-// =============================================================================
-// PORT I/O
-// =============================================================================
-
-static inline void outb(uint16_t port, uint8_t value) {
-    asm volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
-}
-
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
-    asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
-    return ret;
 }
 

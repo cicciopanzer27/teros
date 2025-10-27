@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
 
 #define MAX_NETWORK_INTERFACES 8
 #define MAX_TCP_SOCKETS 128
@@ -22,7 +23,7 @@ static int interface_count = 0;
 
 static tcp_socket_t* tcp_sockets[MAX_TCP_SOCKETS];
 static int tcp_socket_count = 0;
-static uint16_t next_port = 32768;
+__attribute__((unused)) static uint16_t next_port = 32768;
 
 static void network_init(void) {
     for (int i = 0; i < MAX_NETWORK_INTERFACES; i++) {
@@ -88,6 +89,7 @@ int network_interface_down(const char* name) {
 }
 
 int ethernet_send(const uint8_t* dest_mac, uint16_t ethertype, const void* data, size_t len) {
+    (void)ethertype;
     if (dest_mac == NULL || data == NULL || len == 0) {
         return -1;
     }
@@ -128,19 +130,22 @@ int ethernet_receive(ethernet_frame_t* frame, size_t len) {
 }
 
 int ipv4_send(ipv4_addr_t* dest, uint8_t protocol, const void* data, size_t len) {
+    (void)protocol;
     if (dest == NULL || data == NULL || len == 0) {
         return -1;
     }
     
     // TODO: Construct and send IP packet
     console_puts("NETWORK: Sending IP packet to ");
-    printf("%u.%u.%u.%u", dest->octets[0], dest->octets[1], dest->octets[2], dest->octets[3]);
+    printf("%u.%u.%u.%u", dest->addr[0], dest->addr[1], dest->addr[2], dest->addr[3]);
     console_puts("\n");
     
     return 0;
 }
 
 int ipv4_receive(ipv4_header_t* header, const void* data, size_t len) {
+    (void)data;
+    (void)len;
     if (header == NULL) {
         return -1;
     }
@@ -303,6 +308,8 @@ int tcp_close(tcp_socket_t* socket) {
 }
 
 int udp_sendto(ipv4_addr_t* dest, uint16_t dest_port, uint16_t src_port, const void* buf, size_t len) {
+    (void)dest_port;
+    (void)src_port;
     if (dest == NULL || buf == NULL || len == 0) {
         return -1;
     }
@@ -316,6 +323,8 @@ int udp_sendto(ipv4_addr_t* dest, uint16_t dest_port, uint16_t src_port, const v
 }
 
 ssize_t udp_recvfrom(ipv4_addr_t* src, uint16_t* src_port, void* buf, size_t len) {
+    (void)src;
+    (void)src_port;
     if (buf == NULL || len == 0) {
         return -1;
     }

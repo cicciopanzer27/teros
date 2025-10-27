@@ -135,6 +135,7 @@ char* ternary_formatter_format_instructions(ternary_formatter_t* formatter) {
 }
 
 char* ternary_formatter_format_instruction(ternary_formatter_t* formatter, t3_instruction_t* instruction, size_t index) {
+    (void)index;
     if (formatter == NULL || instruction == NULL) {
         return NULL;
     }
@@ -238,7 +239,7 @@ bool ternary_formatter_should_break_line(ternary_formatter_t* formatter, const c
         return false;
     }
     
-    return strlen(line) > formatter->line_length;
+    return strlen(line) > (size_t)formatter->line_length;
 }
 
 char* ternary_formatter_break_line(ternary_formatter_t* formatter, const char* line) {

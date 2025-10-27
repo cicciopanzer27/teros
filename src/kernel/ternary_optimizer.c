@@ -13,6 +13,14 @@
 #include <string.h>
 #include <assert.h>
 
+// Forward declarations for helper functions
+static bool ternary_optimizer_instructions_independent(t3_instruction_t* a, t3_instruction_t* b);
+static bool ternary_optimizer_should_swap(t3_instruction_t* a, t3_instruction_t* b);
+static int ternary_optimizer_get_write_register(t3_instruction_t* instruction);
+static int ternary_optimizer_get_read_register(t3_instruction_t* instruction);
+static bool ternary_optimizer_is_arithmetic(t3_instruction_t* instruction);
+static bool ternary_optimizer_is_memory(t3_instruction_t* instruction);
+
 // =============================================================================
 // TERNARY OPTIMIZER IMPLEMENTATION
 // =============================================================================
@@ -229,7 +237,7 @@ bool ternary_optimizer_loop_unrolling(ternary_optimizer_t* optimizer, t3_instruc
             if (loop_size <= 4) {  // Only unroll small loops
                 // Unroll the loop 2 times
                 for (int j = 0; j < loop_size; j++) {
-                    if (i + j + 1 < (int)instruction_count) {
+                    if (i + (size_t)j + 1 < instruction_count) {
                         instructions[i + j + 1] = instructions[loop_start + j];
                     }
                 }
@@ -270,7 +278,7 @@ bool ternary_optimizer_instruction_scheduling(ternary_optimizer_t* optimizer, t3
     return true;
 }
 
-bool ternary_optimizer_instructions_independent(t3_instruction_t* a, t3_instruction_t* b) {
+static bool ternary_optimizer_instructions_independent(t3_instruction_t* a, t3_instruction_t* b) {
     if (a == NULL || b == NULL) return false;
     
     // Check if instruction A writes to a register that B reads
@@ -292,7 +300,7 @@ bool ternary_optimizer_instructions_independent(t3_instruction_t* a, t3_instruct
     return true;
 }
 
-bool ternary_optimizer_should_swap(t3_instruction_t* a, t3_instruction_t* b) {
+static bool ternary_optimizer_should_swap(t3_instruction_t* a, t3_instruction_t* b) {
     if (a == NULL || b == NULL) return false;
     
     // Simple heuristic - prefer arithmetic operations before memory operations
@@ -303,7 +311,7 @@ bool ternary_optimizer_should_swap(t3_instruction_t* a, t3_instruction_t* b) {
     return false;
 }
 
-int ternary_optimizer_get_write_register(t3_instruction_t* instruction) {
+static int ternary_optimizer_get_write_register(t3_instruction_t* instruction) {
     if (instruction == NULL) return -1;
     
     switch (instruction->opcode) {
@@ -322,7 +330,7 @@ int ternary_optimizer_get_write_register(t3_instruction_t* instruction) {
     }
 }
 
-int ternary_optimizer_get_read_register(t3_instruction_t* instruction) {
+static int ternary_optimizer_get_read_register(t3_instruction_t* instruction) {
     if (instruction == NULL) return -1;
     
     switch (instruction->opcode) {
@@ -341,7 +349,7 @@ int ternary_optimizer_get_read_register(t3_instruction_t* instruction) {
     }
 }
 
-bool ternary_optimizer_is_arithmetic(t3_instruction_t* instruction) {
+static bool ternary_optimizer_is_arithmetic(t3_instruction_t* instruction) {
     if (instruction == NULL) return false;
     
     return instruction->opcode == T3_OPCODE_ADD ||
@@ -350,7 +358,7 @@ bool ternary_optimizer_is_arithmetic(t3_instruction_t* instruction) {
            instruction->opcode == T3_OPCODE_DIV;
 }
 
-bool ternary_optimizer_is_memory(t3_instruction_t* instruction) {
+static bool ternary_optimizer_is_memory(t3_instruction_t* instruction) {
     if (instruction == NULL) return false;
     
     return instruction->opcode == T3_OPCODE_LOAD ||
@@ -367,10 +375,8 @@ bool ternary_optimizer_register_allocation(ternary_optimizer_t* optimizer, t3_in
     }
     
     // Simple register allocation - use lower numbered registers first
-    int register_map[T3_REGISTER_COUNT];
-    for (int i = 0; i < T3_REGISTER_COUNT; i++) {
-        register_map[i] = i;
-    }
+    // TODO: Implement advanced register allocation using register_map
+    (void)optimizer;  // Unused for now
     
     // Map registers to optimize usage
     for (size_t i = 0; i < instruction_count; i++) {

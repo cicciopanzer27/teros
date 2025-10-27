@@ -1,9 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+// Note: stdio.h removed - not needed for string functions
 
 /* TEROS specific includes */
-#include "trits.h"
+#include "trit.h"  // Fixed: was "trits.h" (typo)
+
+// Forward declarations needed for strdup
+extern void* malloc(size_t size);
+extern void* memcpy(void* dest, const void* src, size_t n);
 
 /**
  * Implementation of strlen for TEROS operating system.
@@ -150,10 +154,10 @@ int strncmp(const char* s1, const char* s2, size_t n) {
  * @param c The character to search for.
  * @return A pointer to the first occurrence of c in s, or NULL if it is not found.
  */
-const char* strchr(const char* s, int c) {
+char* strchr(const char* s, int c) {
     while (*s != '\0') {
         if (*s == (char)c) {
-            return s;
+            return (char*)s;  // Cast away const - standard behavior
         }
         s++;
     }
@@ -168,7 +172,7 @@ const char* strchr(const char* s, int c) {
  * @param c The character to search for.
  * @return A pointer to the last occurrence of c in s, or NULL if it is not found.
  */
-const char* strrchr(const char* s, int c) {
+char* strrchr(const char* s, int c) {
     const char* last = NULL;
     while (*s != '\0') {
         if (*s == (char)c) {
@@ -176,8 +180,99 @@ const char* strrchr(const char* s, int c) {
         }
         s++;
     }
-    return last;
+    return (char*)last;  // Cast away const - standard behavior
 }
-```
-Note that the implementation of these functions is optimized for efficiency and safety. In particular, they use safe NULL pointer handling, proper bounds checking, always null-terminate strings, return appropriate values, and include clear comments for clarity. Additionally, memory leaks are avoided by using smart pointers or other memory management techniques.
+
+/**
+ * Implementation of strdup for TEROS operating system.
+ * Duplicates a string by allocating memory and copying.
+ * NOTE: 's' has __attribute__((nonnull)) so NULL check is not needed
+ */
+char* strdup(const char* s) {
+    size_t len = strlen(s) + 1;
+    char* dup = (char*)malloc(len);
+    if (!dup) return NULL;
+    memcpy(dup, s, len);
+    return dup;
+}
+
+/**
+ * Implementation of strtok for TEROS operating system.
+ * Tokenizes a string based on delimiters.
+ */
+char* strtok(char* str, const char* delim) {
+    static char* saved = NULL;
+    if (str) saved = str;
+    if (!saved) return NULL;
+    
+    // Skip leading delimiters
+    while (*saved && strchr(delim, *saved)) saved++;
+    if (!*saved) return NULL;
+    
+    char* token = saved;
+    // Find next delimiter
+    while (*saved && !strchr(delim, *saved)) saved++;
+    if (*saved) *saved++ = '\0';
+    
+    return token;
+}
+
+/**
+ * Implementation of strtol for TEROS operating system.
+ * Converts string to long integer.
+ */
+long strtol(const char* nptr, char** endptr, int base) {
+    const char* s = nptr;
+    long result = 0;
+    int sign = 1;
+    
+    // Skip whitespace
+    while (*s == ' ' || *s == '\t' || *s == '\n') s++;
+    
+    // Handle sign
+    if (*s == '-') {
+        sign = -1;
+        s++;
+    } else if (*s == '+') {
+        s++;
+    }
+    
+    // Auto-detect base
+    if (base == 0) {
+        if (*s == '0') {
+            s++;
+            if (*s == 'x' || *s == 'X') {
+                base = 16;
+                s++;
+            } else {
+                base = 8;
+            }
+        } else {
+            base = 10;
+        }
+    } else if (base == 16 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        s += 2;
+    }
+    
+    // Convert digits
+    while (*s) {
+        int digit;
+        if (*s >= '0' && *s <= '9') {
+            digit = *s - '0';
+        } else if (*s >= 'a' && *s <= 'z') {
+            digit = *s - 'a' + 10;
+        } else if (*s >= 'A' && *s <= 'Z') {
+            digit = *s - 'A' + 10;
+        } else {
+            break;
+        }
+        
+        if (digit >= base) break;
+        result = result * base + digit;
+        s++;
+    }
+    
+    if (endptr) *endptr = (char*)s;
+    return sign * result;
+}
 

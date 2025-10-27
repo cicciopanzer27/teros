@@ -82,7 +82,7 @@ void interrupt_init(void) {
     interrupts_enabled = false;
 }
 
-bool interrupt_register_handler(uint8_t interrupt_num, interrupt_handler_t handler) {
+bool interrupt_register_handler(uint32_t interrupt_num, interrupt_handler_t handler) {
     if (interrupt_num >= MAX_INTERRUPTS) {
         return false;
     }
@@ -90,7 +90,7 @@ bool interrupt_register_handler(uint8_t interrupt_num, interrupt_handler_t handl
     return true;
 }
 
-void interrupt_unregister_handler(uint8_t interrupt_num) {
+void interrupt_unregister_handler(uint32_t interrupt_num) {
     if (interrupt_num < MAX_INTERRUPTS) {
         interrupt_handlers[interrupt_num] = NULL;
     }
@@ -305,7 +305,7 @@ void idt_init(void) {
     console_puts("IDT: Initialization complete\n");
 }
 
-void idt_set_entry(uint8_t index, uint64_t base, uint8_t privilege) {
+void idt_set_entry(uint32_t index, uint64_t base, uint8_t privilege) {
     if (index >= IDT_SIZE) {
         return;
     }
