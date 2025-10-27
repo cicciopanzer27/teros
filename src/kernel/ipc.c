@@ -102,7 +102,7 @@ int pipe_close(int fd) {
     if (pipe->ref_count == 0) {
         // Close pipe
         if (pipe->buffer != NULL) {
-            // TODO: kfree(pipe->buffer);
+            kfree(pipe->buffer);
             pipe->buffer = NULL;
         }
         pipe->is_open = false;
@@ -195,11 +195,50 @@ int signal_send(int pid, int sig) {
         return -1;
     }
     
-    // TODO: Send signal to process
+    // Send signal to process
     console_puts("IPC: Sending signal ");
-    // TODO: Print sig
+    
+    // Print signal number
+    char sig_str[12];
+    int sig_len = 0;
+    int temp_sig = sig;
+    if (temp_sig == 0) {
+        sig_str[sig_len++] = '0';
+    } else {
+        char digits[12];
+        int digit_count = 0;
+        while (temp_sig > 0) {
+            digits[digit_count++] = '0' + (temp_sig % 10);
+            temp_sig /= 10;
+        }
+        for (int i = digit_count - 1; i >= 0; i--) {
+            sig_str[sig_len++] = digits[i];
+        }
+    }
+    sig_str[sig_len] = '\0';
+    console_puts(sig_str);
+    
     console_puts(" to PID ");
-    // TODO: Print pid
+    
+    // Print PID
+    char pid_str[12];
+    int pid_len = 0;
+    int temp_pid = pid;
+    if (temp_pid == 0) {
+        pid_str[pid_len++] = '0';
+    } else {
+        char digits[12];
+        int digit_count = 0;
+        while (temp_pid > 0) {
+            digits[digit_count++] = '0' + (temp_pid % 10);
+            temp_pid /= 10;
+        }
+        for (int i = digit_count - 1; i >= 0; i--) {
+            pid_str[pid_len++] = digits[i];
+        }
+    }
+    pid_str[pid_len] = '\0';
+    console_puts(pid_str);
     console_puts("\n");
     
     return signal_dispatch(pid, sig);
@@ -236,8 +275,11 @@ static void shm_init(void) {
 }
 
 int shm_open(const char* name, int oflag, uint32_t mode) {
-    // TODO: Implement named shared memory
-    // For now, just return a new shm block
+    // Named shared memory implementation (simplified for MVP)
+    // In a full implementation, this would maintain a name->id mapping
+    (void)name;   // Suppress unused warning for MVP
+    (void)oflag;  // Suppress unused warning for MVP
+    (void)mode;   // Suppress unused warning for MVP
     
     // Find free slot
     int idx = -1;
@@ -294,7 +336,7 @@ int shm_unmap(void* addr, size_t size) {
             shm_blocks[i].ref_count--;
             
             if (shm_blocks[i].ref_count == 0) {
-                // TODO: kfree(shm_blocks[i].addr);
+                kfree(shm_blocks[i].addr);
                 shm_blocks[i].addr = NULL;
                 shm_blocks[i].is_valid = false;
                 shm_count--;
@@ -308,7 +350,16 @@ int shm_unmap(void* addr, size_t size) {
 }
 
 int shm_unlink(const char* name) {
-    // TODO: Implement
+    // Unlink named shared memory (simplified for MVP)
+    // In a full implementation, this would remove the name->id mapping
+    // and mark the segment for deletion when all references are closed
+    (void)name;  // Suppress unused warning for MVP
+    
+    // For MVP, just return success
+    // Real implementation would:
+    // 1. Find shm segment by name
+    // 2. Mark as unlinked (no new mappings allowed)
+    // 3. Delete when ref_count reaches 0
     return 0;
 }
 
@@ -371,8 +422,12 @@ int sem_wait(int sem_id) {
     }
     
     // Wait for semaphore
+    // Note: This is a spinlock implementation for MVP
+    // A full implementation would integrate with the scheduler to block/wake processes
+    // TODO: Integrate with scheduler for proper process blocking
     while (sem->value <= 0) {
-        // TODO: Sleep/wait
+        // Busy wait (yield CPU)
+        asm volatile("pause");
     }
     
     sem->value--;
