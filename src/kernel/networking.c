@@ -94,7 +94,7 @@ int ethernet_send(const uint8_t* dest_mac, uint16_t ethertype, const void* data,
     
     // TODO: Implement Ethernet frame transmission
     console_puts("NETWORK: Sending Ethernet frame (");
-    // TODO: Print len
+    printf("%zu", len);
     console_puts(" bytes)\n");
     
     return 0;
@@ -107,16 +107,18 @@ int ethernet_receive(ethernet_frame_t* frame, size_t len) {
     
     // TODO: Process received frame
     console_puts("NETWORK: Received Ethernet frame (");
-    // TODO: Print len
+    printf("%zu", len);
     console_puts(" bytes)\n");
-    
+
     // Dispatch based on ethertype
     switch (frame->ethertype) {
         case ETHERTYPE_IP:
             // TODO: Process IP packet
+            console_puts("NETWORK: Received IP packet\n");
             break;
         case ETHERTYPE_ARP:
             // TODO: Process ARP
+            console_puts("NETWORK: Received ARP packet\n");
             break;
         default:
             break;
@@ -132,7 +134,7 @@ int ipv4_send(ipv4_addr_t* dest, uint8_t protocol, const void* data, size_t len)
     
     // TODO: Construct and send IP packet
     console_puts("NETWORK: Sending IP packet to ");
-    // TODO: Print IP address
+    printf("%u.%u.%u.%u", dest->octets[0], dest->octets[1], dest->octets[2], dest->octets[3]);
     console_puts("\n");
     
     return 0;
@@ -145,16 +147,18 @@ int ipv4_receive(ipv4_header_t* header, const void* data, size_t len) {
     
     // TODO: Process IP packet
     console_puts("NETWORK: Received IP packet (protocol: ");
-    // TODO: Print protocol
+    printf("%u", header->protocol);
     console_puts(")\n");
-    
+
     // Dispatch based on protocol
     switch (header->protocol) {
         case IP_PROTOCOL_TCP:
             // TODO: Process TCP
+            console_puts("NETWORK: TCP packet received\n");
             break;
         case IP_PROTOCOL_UDP:
             // TODO: Process UDP
+            console_puts("NETWORK: UDP packet received\n");
             break;
         case IP_PROTOCOL_ICMP:
             // TODO: Process ICMP

@@ -55,7 +55,8 @@ void kernel_main(void) {
     init_scheduler();
     init_console();
     init_timer();
-    
+    init_ipc_system();
+
     // Enable interrupts
     interrupt_enable();
     
@@ -174,12 +175,22 @@ void init_console(void) {
 
 void init_timer(void) {
     console_puts("Initializing timer...\n");
-    
+
     // Initialize timer
     timer_init();
     console_puts("Timer initialized\n");
-    
+
     console_puts("Timer ready\n");
+}
+
+void init_ipc_system(void) {
+    console_puts("Initializing IPC system...\n");
+
+    // Initialize IPC
+    ipc_init();
+    console_puts("IPC system initialized\n");
+
+    console_puts("IPC ready\n");
 }
 
 void init_lambda3_integration(void) {

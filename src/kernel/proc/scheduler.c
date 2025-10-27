@@ -292,9 +292,18 @@ void scheduler_save_context(process_t* proc) {
         return;
     }
     
-    // Save TVM state
-    // This is a simplified implementation
-    // In a real system, we would save all CPU registers
+    // Save TVM registers
+    if (proc->tvm != NULL) {
+        // Save TVM CPU state (registers, flags, PC, SP)
+        tvm_context_t* ctx = &proc->tvm_context;
+        ctx->r0 = tvm_get_register(proc->tvm, TVM_REG_R0);
+        ctx->r1 = tvm_get_register(proc->tvm, TVM_REG_R1);
+        ctx->r2 = tvm_get_register(proc->tvm, TVM_REG_R2);
+        ctx->r3 = tvm_get_register(proc->tvm, TVM_REG_R3);
+        ctx->pc = tvm_get_register(proc->tvm, TVM_REG_PC);
+        ctx->sp = tvm_get_register(proc->tvm, TVM_REG_SP);
+        ctx->flags = tvm_get_flags(proc->tvm);
+    }
     
     console_puts("SCHED: Saved context for process ");
     console_puts(proc->name);
@@ -306,9 +315,17 @@ void scheduler_restore_context(process_t* proc) {
         return;
     }
     
-    // Restore TVM state
-    // This is a simplified implementation
-    // In a real system, we would restore all CPU registers
+    // Restore TVM registers
+    if (proc->tvm != NULL && proc->tvm_context_initialized) {
+        tvm_context_t* ctx = &proc->tvm_context;
+        tvm_set_register(proc->tvm, TVM_REG_R0, ctx->r0);
+        tvm_set_register(proc->tvm, TVM_REG_R1, ctx->r1);
+        tvm_set_register(proc->tvm, TVM_REG_R2, ctx->r2);
+        tvm_set_register(proc->tvm, TVM_REG_R3, ctx->r3);
+        tvm_set_register(proc->tvm, TVM_REG_PC, ctx->pc);
+        tvm_set_register(proc->tvm, TVM_REG_SP, ctx->sp);
+        tvm_set_flags(proc->tvm, ctx->flags);
+    }
     
     console_puts("SCHED: Restored context for process ");
     console_puts(proc->name);

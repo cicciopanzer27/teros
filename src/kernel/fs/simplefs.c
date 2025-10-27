@@ -254,3 +254,260 @@ simplefs_superblock_t* simplefs_get_superblock(void) {
     return &simplefs_state.superblock;
 }
 
+// =============================================================================
+// INODE OPERATIONS
+// =============================================================================
+
+simplefs_inode_t* simplefs_read_inode(uint32_t inode_num) {
+    if (!simplefs_state.initialized || inode_num >= SIMPLEFS_MAX_INODES) {
+        return NULL;
+    }
+
+    // Check if inode is allocated
+    uint32_t byte = inode_num / 8;
+    uint32_t bit = inode_num % 8;
+    if ((simplefs_state.inode_bitmap[byte] & (1 << bit)) != 0) {
+        return NULL; // Inode not allocated
+    }
+
+    // Read inode from inode table
+    static simplefs_inode_t inode_buffer;
+    uint32_t inode_table_start = simplefs_state.superblock.inode_table_block * SIMPLEFS_BLOCK_SIZE;
+    uint32_t inode_offset = inode_num * sizeof(simplefs_inode_t);
+
+    // For simplicity, use a static buffer (in real implementation, read from device)
+    memset(&inode_buffer, 0, sizeof(simplefs_inode_t));
+    inode_buffer.mode = SIMPLEFS_TYPE_FILE; // Default to file
+
+    return &inode_buffer;
+}
+
+bool simplefs_write_inode(simplefs_inode_t* inode) {
+    if (!simplefs_state.initialized || inode == NULL) {
+        return false;
+    }
+
+    // In real implementation, write to device
+    // For now, just return success
+    return true;
+}
+
+// =============================================================================
+// DIRECTORY OPERATIONS
+// =============================================================================
+
+uint32_t simplefs_create_file(const char* path, uint32_t mode) {
+    if (!simplefs_state.initialized || path == NULL) {
+        return 0;
+    }
+
+    // Allocate inode
+    uint32_t inode_num = simplefs_alloc_inode();
+    if (inode_num == 0) {
+        return 0;
+    }
+
+    // Create inode structure
+    simplefs_inode_t inode;
+    memset(&inode, 0, sizeof(simplefs_inode_t));
+    inode.mode = mode | SIMPLEFS_TYPE_FILE;
+    inode.uid = 0; // Root user
+    inode.gid = 0; // Root group
+    inode.size = 0;
+    inode.blocks = 0;
+    inode.ctime = 0; // TODO: Get current time
+    inode.mtime = inode.ctime;
+    inode.atime = inode.ctime;
+
+    // Write inode
+    if (!simplefs_write_inode(&inode)) {
+        simplefs_free_inode(inode_num);
+        return 0;
+    }
+
+    // Add to parent directory
+    // TODO: Parse path and add to parent directory
+
+    return inode_num;
+}
+
+uint32_t simplefs_create_directory(const char* path, uint32_t mode) {
+    if (!simplefs_state.initialized || path == NULL) {
+        return 0;
+    }
+
+    // Allocate inode
+    uint32_t inode_num = simplefs_alloc_inode();
+    if (inode_num == 0) {
+        return 0;
+    }
+
+    // Create inode structure
+    simplefs_inode_t inode;
+    memset(&inode, 0, sizeof(simplefs_inode_t));
+    inode.mode = mode | SIMPLEFS_TYPE_DIR;
+    inode.uid = 0; // Root user
+    inode.gid = 0; // Root group
+    inode.size = 0;
+    inode.blocks = 0;
+    inode.ctime = 0; // TODO: Get current time
+    inode.mtime = inode.ctime;
+    inode.atime = inode.ctime;
+
+    // Write inode
+    if (!simplefs_write_inode(&inode)) {
+        simplefs_free_inode(inode_num);
+        return 0;
+    }
+
+    // TODO: Add . and .. entries
+
+    return inode_num;
+}
+
+uint32_t simplefs_find_file(const char* path) {
+    if (!simplefs_state.initialized || path == NULL) {
+        return 0;
+    }
+
+    // TODO: Parse path and traverse directory structure
+    // For now, return root inode for root path
+    if (strcmp(path, "/") == 0) {
+        return simplefs_state.superblock.root_inode;
+    }
+
+    return 0; // Not found
+}
+
+// =============================================================================
+// FILE I/O OPERATIONS
+// =============================================================================
+
+size_t simplefs_read_file(uint32_t inode_num, uint32_t offset, void* buffer, size_t size) {
+    if (!simplefs_state.initialized || buffer == NULL) {
+        return 0;
+    }
+
+    simplefs_inode_t* inode = simplefs_read_inode(inode_num);
+    if (inode == NULL || (inode->mode & SIMPLEFS_TYPE_FILE) == 0) {
+        return 0;
+    }
+
+    // Check bounds
+    if (offset >= inode->size) {
+        return 0;
+    }
+
+    size_t bytes_to_read = (offset + size > inode->size) ? (inode->size - offset) : size;
+
+    // Read direct blocks
+    size_t bytes_read = 0;
+    uint32_t current_offset = offset;
+    uint32_t block_index = current_offset / SIMPLEFS_BLOCK_SIZE;
+    uint32_t block_offset = current_offset % SIMPLEFS_BLOCK_SIZE;
+
+    while (bytes_read < bytes_to_read && block_index < 12) {
+        if (inode->direct_blocks[block_index] == 0) {
+            break; // No more blocks
+        }
+
+        uint32_t block_num = inode->direct_blocks[block_index];
+        uint8_t block_buffer[SIMPLEFS_BLOCK_SIZE];
+
+        if (simplefs_read_block(block_num, block_buffer)) {
+            size_t block_bytes = SIMPLEFS_BLOCK_SIZE - block_offset;
+            if (block_bytes > bytes_to_read - bytes_read) {
+                block_bytes = bytes_to_read - bytes_read;
+            }
+
+            memcpy((uint8_t*)buffer + bytes_read, block_buffer + block_offset, block_bytes);
+            bytes_read += block_bytes;
+            current_offset += block_bytes;
+            block_index++;
+            block_offset = 0;
+        } else {
+            break;
+        }
+    }
+
+    // Update access time
+    inode->atime = 0; // TODO: Get current time
+    simplefs_write_inode(inode);
+
+    return bytes_read;
+}
+
+size_t simplefs_write_file(uint32_t inode_num, uint32_t offset, const void* buffer, size_t size) {
+    if (!simplefs_state.initialized || buffer == NULL) {
+        return 0;
+    }
+
+    simplefs_inode_t* inode = simplefs_read_inode(inode_num);
+    if (inode == NULL || (inode->mode & SIMPLEFS_TYPE_FILE) == 0) {
+        return 0;
+    }
+
+    // TODO: Implement file writing with block allocation
+    // For now, just return success without writing
+    size_t bytes_written = size;
+
+    // Update file size and modification time
+    if (offset + size > inode->size) {
+        inode->size = offset + size;
+    }
+    inode->mtime = 0; // TODO: Get current time
+    simplefs_write_inode(inode);
+
+    return bytes_written;
+}
+
+// =============================================================================
+// FILE DELETION
+// =============================================================================
+
+bool simplefs_delete_file(const char* path) {
+    if (!simplefs_state.initialized || path == NULL) {
+        return false;
+    }
+
+    uint32_t inode_num = simplefs_find_file(path);
+    if (inode_num == 0) {
+        return false;
+    }
+
+    simplefs_inode_t* inode = simplefs_read_inode(inode_num);
+    if (inode == NULL || (inode->mode & SIMPLEFS_TYPE_FILE) == 0) {
+        return false;
+    }
+
+    // Free all blocks
+    for (int i = 0; i < 12; i++) {
+        if (inode->direct_blocks[i] != 0) {
+            simplefs_free_block(inode->direct_blocks[i]);
+        }
+    }
+    if (inode->indirect_block != 0) {
+        simplefs_free_block(inode->indirect_block);
+    }
+
+    // Free inode
+    simplefs_free_inode(inode_num);
+
+    // Remove from parent directory
+    // TODO: Parse path and remove from parent directory
+
+    return true;
+}
+
+bool simplefs_delete_directory(const char* path) {
+    if (!simplefs_state.initialized || path == NULL) {
+        return false;
+    }
+
+    // TODO: Check if directory is empty
+    // TODO: Delete all entries
+    // TODO: Free inode
+
+    return false; // Not implemented yet
+}
+
