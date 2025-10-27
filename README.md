@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Production Ready  
-**Last Updated:** Gennaio 2025
+**Last Updated:** October 27, 2025
 
 ---
 
@@ -12,7 +12,7 @@ TEROS is a complete operating system implementing ternary logic (base-3) computi
 
 ---
 
-## Work Completed (Gennaio 2025)
+## Work Completed (October 2025)
 
 ### 1. Core Implementations Added
 
@@ -54,7 +54,7 @@ TEROS is a complete operating system implementing ternary logic (base-3) computi
 - Checks for TODO comments
 - Runs Python unit tests
 
-### 3. Project Cleanup (Gennaio 2025)
+### 3. Project Cleanup (October 27, 2025)
 
 #### Lambda3_Project Removal
 - Removed disorganized `Lambda3_Project/` directory (71 files)
@@ -630,7 +630,7 @@ make test
 
 ---
 
-## Recent Changes (Gennaio 2025)
+## Recent Changes (October 27, 2025)
 
 ### Code Changes
 1. **SimpleFS**: Added complete write operations with dynamic block allocation
@@ -761,4 +761,4 @@ For complete technical details, see:
 
 ---
 
-**Note**: This README documents the actual current state of the repository as of Gennaio 2025, including all completed implementations, the current file structure, and recent cleanup of the Lambda3_Project directory.
+**Note**: This README documents the actual current state of the repository as of October 27, 2025, including all completed implementations, the current file structure, and recent cleanup of the Lambda3_Project directory.
