@@ -1,0 +1,53 @@
+{
+  "performance_metrics": [
+    {
+      "operation": "lambda_reduction",
+      "duration_ms": 0.5445480346679688,
+      "memory_mb": 0.0078125,
+      "cpu_percent": 0.0,
+      "timestamp": "2025-10-25 14:43:34.204905",
+      "success": true,
+      "error_message": null
+    },
+    {
+      "operation": "lambda_reduction",
+      "duration_ms": 0.537872314453125,
+      "memory_mb": 0.0078125,
+      "cpu_percent": 0.0,
+      "timestamp": "2025-10-25 14:43:34.205443",
+      "success": true,
+      "error_message": null
+    },
+    {
+      "operation": "lambda_reduction",
+      "duration_ms": 0.5171298980712891,
+      "memory_mb": 0.0,
+      "cpu_percent": 0.0,
+      "timestamp": "2025-10-25 14:43:34.205960",
+      "success": true,
+      "error_message": null
+    },
+    {
+      "operation": "lambda_reduction",
+      "duration_ms": 0.0,
+      "memory_mb": 0.0,
+      "cpu_percent": 0.0,
+      "timestamp": "2025-10-25 14:43:34.207077",
+      "success": true,
+      "error_message": null
+    }
+  ],
+  "system_metrics": [
+    {
+      "cpu_percent": 77.8,
+      "memory_mb": 13196.84375,
+      "disk_usage_percent": 76.9,
+      "timestamp": "2025-10-25 14:43:34.204905"
+    }
+  ],
+  "operation_counts": {
+    "lambda_reduction": 4
+  },
+  "error_counts": {},
+  "export_timestamp": "2025-10-25T14:43:34.207077"
+}

@@ -1,0 +1,397 @@
+/**
+ * @file t3_isa.c
+ * @brief T3-ISA (Ternary 3-Instruction Set Architecture) implementation
+ * @author TEROS Development Team
+ * @date 2025
+ */
+
+#include "t3_isa.h"
+#include "trit.h"
+#include "trit_array.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+// =============================================================================
+// T3-ISA IMPLEMENTATION
+// =============================================================================
+
+t3_instruction_t* t3_instruction_create(void) {
+    t3_instruction_t* instruction = malloc(sizeof(t3_instruction_t));
+    if (instruction == NULL) return NULL;
+    
+    instruction->opcode = 0;
+    instruction->operand1 = 0;
+    instruction->operand2 = 0;
+    instruction->operand3 = 0;
+    instruction->immediate = 0;
+    instruction->valid = false;
+    
+    return instruction;
+}
+
+void t3_instruction_destroy(t3_instruction_t* instruction) {
+    if (instruction != NULL) {
+        free(instruction);
+    }
+}
+
+void t3_instruction_set(t3_instruction_t* instruction, uint8_t opcode, 
+                       uint8_t operand1, uint8_t operand2, uint8_t operand3, 
+                       int16_t immediate) {
+    if (instruction != NULL) {
+        instruction->opcode = opcode;
+        instruction->operand1 = operand1;
+        instruction->operand2 = operand2;
+        instruction->operand3 = operand3;
+        instruction->immediate = immediate;
+        instruction->valid = true;
+    }
+}
+
+bool t3_instruction_is_valid(t3_instruction_t* instruction) {
+    return instruction != NULL && instruction->valid;
+}
+
+// =============================================================================
+// T3-ISA INSTRUCTION EXECUTION
+// =============================================================================
+
+trit_t t3_instruction_execute(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (!t3_instruction_is_valid(instruction) || registers == NULL) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    switch (instruction->opcode) {
+        case T3_OPCODE_LOAD:
+            return t3_execute_load(instruction, registers);
+        case T3_OPCODE_STORE:
+            return t3_execute_store(instruction, registers);
+        case T3_OPCODE_ADD:
+            return t3_execute_add(instruction, registers);
+        case T3_OPCODE_SUB:
+            return t3_execute_sub(instruction, registers);
+        case T3_OPCODE_MUL:
+            return t3_execute_mul(instruction, registers);
+        case T3_OPCODE_DIV:
+            return t3_execute_div(instruction, registers);
+        case T3_OPCODE_AND:
+            return t3_execute_and(instruction, registers);
+        case T3_OPCODE_OR:
+            return t3_execute_or(instruction, registers);
+        case T3_OPCODE_NOT:
+            return t3_execute_not(instruction, registers);
+        case T3_OPCODE_XOR:
+            return t3_execute_xor(instruction, registers);
+        case T3_OPCODE_CMP:
+            return t3_execute_cmp(instruction, registers);
+        case T3_OPCODE_JMP:
+            return t3_execute_jmp(instruction, registers);
+        case T3_OPCODE_JZ:
+            return t3_execute_jz(instruction, registers);
+        case T3_OPCODE_JNZ:
+            return t3_execute_jnz(instruction, registers);
+        case T3_OPCODE_CALL:
+            return t3_execute_call(instruction, registers);
+        case T3_OPCODE_RET:
+            return t3_execute_ret(instruction, registers);
+        case T3_OPCODE_PUSH:
+            return t3_execute_push(instruction, registers);
+        case T3_OPCODE_POP:
+            return t3_execute_pop(instruction, registers);
+        case T3_OPCODE_HALT:
+            return t3_execute_halt(instruction, registers);
+        default:
+            return trit_create(TERNARY_UNKNOWN);
+    }
+}
+
+// =============================================================================
+// T3-ISA DATA MOVEMENT INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_load(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    // Load immediate value or from another register
+    if (instruction->operand2 == 0) {
+        // Load immediate
+        registers[instruction->operand1] = trit_create(instruction->immediate);
+    } else {
+        // Load from register
+        if (instruction->operand2 < T3_REGISTER_COUNT) {
+            registers[instruction->operand1] = registers[instruction->operand2];
+        } else {
+            return trit_create(TERNARY_UNKNOWN);
+        }
+    }
+    
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_store(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || instruction->operand2 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    // Store register value to another register
+    registers[instruction->operand2] = registers[instruction->operand1];
+    return trit_create(TERNARY_POSITIVE);
+}
+
+// =============================================================================
+// T3-ISA ARITHMETIC INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_add(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_add(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+trit_t t3_execute_sub(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_subtract(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+trit_t t3_execute_mul(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_multiply(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+trit_t t3_execute_div(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_divide(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+// =============================================================================
+// T3-ISA LOGIC INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_and(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_and(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+trit_t t3_execute_or(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_or(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+trit_t t3_execute_not(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_not(registers[instruction->operand2]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+trit_t t3_execute_xor(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT || 
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_xor(registers[instruction->operand2], registers[instruction->operand3]);
+    registers[instruction->operand1] = result;
+    return result;
+}
+
+// =============================================================================
+// T3-ISA COMPARISON INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_cmp(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || 
+        instruction->operand2 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    trit_t result = trit_equal(registers[instruction->operand1], registers[instruction->operand2]);
+    return result;
+}
+
+// =============================================================================
+// T3-ISA CONTROL FLOW INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_jmp(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (registers[T3_REGISTER_PC].valid) {
+        int pc = trit_to_int(registers[T3_REGISTER_PC]);
+        pc = instruction->immediate;
+        registers[T3_REGISTER_PC] = trit_create(pc);
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_jz(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    if (trit_is_neutral(registers[instruction->operand1])) {
+        return t3_execute_jmp(instruction, registers);
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_jnz(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    if (!trit_is_neutral(registers[instruction->operand1])) {
+        return t3_execute_jmp(instruction, registers);
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+// =============================================================================
+// T3-ISA STACK INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_call(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Save return address to stack
+    if (registers[T3_REGISTER_SP].valid && registers[T3_REGISTER_PC].valid) {
+        int sp = trit_to_int(registers[T3_REGISTER_SP]);
+        int pc = trit_to_int(registers[T3_REGISTER_PC]);
+        
+        // Push PC to stack (simplified)
+        registers[T3_REGISTER_SP] = trit_create(sp - 1);
+        
+        // Jump to target
+        registers[T3_REGISTER_PC] = trit_create(instruction->immediate);
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_ret(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Restore return address from stack
+    if (registers[T3_REGISTER_SP].valid) {
+        int sp = trit_to_int(registers[T3_REGISTER_SP]);
+        
+        // Pop PC from stack (simplified)
+        registers[T3_REGISTER_SP] = trit_create(sp + 1);
+        registers[T3_REGISTER_PC] = trit_create(sp + 1); // Simplified
+    }
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_push(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || !registers[T3_REGISTER_SP].valid) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    int sp = trit_to_int(registers[T3_REGISTER_SP]);
+    registers[T3_REGISTER_SP] = trit_create(sp - 1);
+    // In a real implementation, store the value to memory at SP
+    return trit_create(TERNARY_POSITIVE);
+}
+
+trit_t t3_execute_pop(t3_instruction_t* instruction, t3_register_t* registers) {
+    if (instruction->operand1 >= T3_REGISTER_COUNT || !registers[T3_REGISTER_SP].valid) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    int sp = trit_to_int(registers[T3_REGISTER_SP]);
+    registers[T3_REGISTER_SP] = trit_create(sp + 1);
+    // In a real implementation, load the value from memory at SP
+    return trit_create(TERNARY_POSITIVE);
+}
+
+// =============================================================================
+// T3-ISA SYSTEM INSTRUCTIONS
+// =============================================================================
+
+trit_t t3_execute_halt(t3_instruction_t* instruction, t3_register_t* registers) {
+    // Halt execution
+    return trit_create(TERNARY_NEUTRAL);
+}
+
+// =============================================================================
+// T3-ISA UTILITY FUNCTIONS
+// =============================================================================
+
+void t3_instruction_print(t3_instruction_t* instruction) {
+    if (instruction == NULL) {
+        printf("NULL Instruction\n");
+        return;
+    }
+    
+    printf("T3 Instruction: opcode=%d, op1=%d, op2=%d, op3=%d, imm=%d, valid=%s\n",
+           instruction->opcode, instruction->operand1, instruction->operand2,
+           instruction->operand3, instruction->immediate, instruction->valid ? "true" : "false");
+}
+
+const char* t3_opcode_to_string(uint8_t opcode) {
+    switch (opcode) {
+        case T3_OPCODE_LOAD: return "LOAD";
+        case T3_OPCODE_STORE: return "STORE";
+        case T3_OPCODE_ADD: return "ADD";
+        case T3_OPCODE_SUB: return "SUB";
+        case T3_OPCODE_MUL: return "MUL";
+        case T3_OPCODE_DIV: return "DIV";
+        case T3_OPCODE_AND: return "AND";
+        case T3_OPCODE_OR: return "OR";
+        case T3_OPCODE_NOT: return "NOT";
+        case T3_OPCODE_XOR: return "XOR";
+        case T3_OPCODE_CMP: return "CMP";
+        case T3_OPCODE_JMP: return "JMP";
+        case T3_OPCODE_JZ: return "JZ";
+        case T3_OPCODE_JNZ: return "JNZ";
+        case T3_OPCODE_CALL: return "CALL";
+        case T3_OPCODE_RET: return "RET";
+        case T3_OPCODE_PUSH: return "PUSH";
+        case T3_OPCODE_POP: return "POP";
+        case T3_OPCODE_HALT: return "HALT";
+        default: return "UNKNOWN";
+    }
+}

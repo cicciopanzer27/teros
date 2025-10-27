@@ -1,0 +1,41 @@
+# Build artifacts
+build/
+bin/
+*.o
+*.bin
+*.iso
+*.img
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+downloads/
+.eggs/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# QEMU
+isodir/
+

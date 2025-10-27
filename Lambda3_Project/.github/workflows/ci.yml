@@ -1,0 +1,112 @@
+name: Lambda³ CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+    
+    - name: Run tests
+      run: |
+        python run_all_tests.py
+        python tests/test_gc.py
+        python tests/test_reducer_complete.py
+        python tests/test_properties.py
+    
+    - name: Run benchmarks
+      run: |
+        python benchmarks/lambda_benchmarks.py
+        python benchmarks/ternary_vs_binary.py
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: test-results/
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install linting tools
+      run: |
+        pip install flake8 black mypy
+    
+    - name: Run flake8
+      run: flake8 lambda3/ --count --max-line-length=120 --statistics
+    
+    - name: Run black
+      run: black --check lambda3/
+    
+    - name: Run mypy
+      run: mypy lambda3/ --ignore-missing-imports
+
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      run: docker build -t lambda3:${{ github.sha }} .
+    
+    - name: Test Docker image
+      run: |
+        docker run lambda3:${{ github.sha }} python -c "from lambda3.parser.parser import parse; print(parse('\\x.x'))"
+    
+    - name: Push to registry (on main)
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "Would push to registry here"
+        # docker push lambda3:${{ github.sha }}
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy to Kubernetes
+      run: |
+        echo "Would deploy to K8s here"
+        # kubectl apply -f k8s/deployment.yaml
+
