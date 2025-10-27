@@ -16,7 +16,7 @@ INCLUDE_DIR = include
 # Flags
 CFLAGS = -Wall -Wextra -std=c11 -I$(SRC_DIR)/kernel -I$(INCLUDE_DIR) -g -O2
 ASFLAGS = -f elf64
-LDFLAGS = -nostdlib -T linker.ld
+LDFLAGS = -nostdlib
 
 # Source files
 KERNEL_SRCS = $(wildcard $(SRC_DIR)/kernel/*.c)
@@ -56,7 +56,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.S | $(BUILD_DIR)
 
 # Link kernel
 $(KERNEL_BIN): $(ALL_OBJS) | $(BIN_DIR)
-	$(LD) $(LDFLAGS) -o $@ $^
+	$(LD) -T linker.ld -o $@ $^
 
 # Create ISO
 iso: $(KERNEL_BIN)
