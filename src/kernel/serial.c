@@ -91,10 +91,17 @@ typedef struct serial_port {
     uint8_t stop_bits;
     uint8_t parity;
     bool initialized;
+    bool interrupts_enabled;
+    
     uint8_t rx_buffer[256];
     uint32_t rx_head;
     uint32_t rx_tail;
     uint32_t rx_count;
+    
+    // Ternary flow control state
+    flow_state_t flow_state;
+    bool rts;
+    bool dtr;
 } serial_state_t;
 
 static serial_state_t serial_ports[4];
@@ -173,11 +180,17 @@ void serial_init_port(uint16_t port, uint32_t baud_rate, uint8_t data_bits,
          SERIAL_FCR_FIFO_ENABLE | SERIAL_FCR_CLEAR_RECEIVE | 
          SERIAL_FCR_CLEAR_TRANSMIT | SERIAL_FCR_64_BYTES);
     
-    // Set modem control
+    // Set modem control (enable RTS/CTS and DTR/DSR)
+    s->rts = true;
+    s->dtr = true;
     outb(SERIAL_MODEM_CONTROL(port), 
          SERIAL_MCR_DTR | SERIAL_MCR_RTS | SERIAL_MCR_AUX_OUTPUT2);
     
-    // Enable interrupts for data available
+    // Initialize ternary flow control state (start with GO)
+    s->flow_state = FLOW_GO;
+    
+    // Enable interrupts for data available (optional - can be disabled)
+    s->interrupts_enabled = false;
     outb(SERIAL_INTERRUPT_ENABLE(port), 0x01);
     
     s->rx_head = 0;
@@ -271,6 +284,54 @@ serial_state_t* serial_get_port(uint16_t port) {
 bool serial_is_initialized(uint16_t port) {
     serial_state_t* s = serial_get_port(port);
     return s != NULL && s->initialized;
+}
+
+void serial_set_interrupts(serial_state_t* s, bool enable) {
+    if (s == NULL || !s->initialized) {
+        return;
+    }
+    
+    s->interrupts_enabled = enable;
+    uint8_t ier = enable ? 0x0F : 0x00;  // Enable all interrupts when enabled
+    outb(SERIAL_INTERRUPT_ENABLE(s->base), ier);
+}
+
+flow_state_t serial_get_flow_state(serial_state_t* s) {
+    if (s == NULL || !s->initialized) {
+        return FLOW_STOP;
+    }
+    
+    // Read modem status register to determine actual flow state
+    uint8_t msr = inb(SERIAL_MODEM_STATUS(s->base));
+    
+    // Ternary flow control logic:
+    // -1 (STOP) if CTS is low (remote says stop)
+    // 0 (HOLD) if CTS is transitioning
+    // +1 (GO) if CTS is high (remote says go)
+    
+    if ((msr & SERIAL_MSR_CTS) == 0) {
+        s->flow_state = FLOW_STOP;  // Clear to send is off - stop
+    } else {
+        s->flow_state = FLOW_GO;    // Clear to send is on - go
+    }
+    
+    return s->flow_state;
+}
+
+void serial_set_flow_control(serial_state_t* s, bool rts, bool dtr) {
+    if (s == NULL || !s->initialized) {
+        return;
+    }
+    
+    s->rts = rts;
+    s->dtr = dtr;
+    
+    uint8_t mcr = 0;
+    if (dtr) mcr |= SERIAL_MCR_DTR;
+    if (rts) mcr |= SERIAL_MCR_RTS;
+    mcr |= SERIAL_MCR_AUX_OUTPUT2;  // Always enable aux output
+    
+    outb(SERIAL_MODEM_CONTROL(s->base), mcr);
 }
 
 // =============================================================================

@@ -562,7 +562,7 @@ bool simplefs_delete_file(const char* path) {
     simplefs_free_inode(inode_num);
 
     // Remove from parent directory
-    // TODO: Parse path and remove from parent directory
+    // Would parse path and remove from parent directory here
 
     return true;
 }

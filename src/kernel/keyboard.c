@@ -63,6 +63,14 @@ typedef struct {
     uint32_t buffer_head;
     uint32_t buffer_tail;
     uint32_t buffer_count;
+    
+    // Extended scancode support
+    bool extended_prefix;
+    uint8_t last_scancode;
+    
+    // Ternary key states for all keys (256 keys maximum)
+    ternary_key_state_t key_states[256];
+    
     void (*key_press_callback)(uint8_t scan_code, uint8_t ascii);
     void (*key_release_callback)(uint8_t scan_code, uint8_t ascii);
 } keyboard_state_t;
@@ -133,6 +141,19 @@ void keyboard_handle_scan_code(uint8_t scan_code) {
         return;
     }
     
+    // Handle extended scancode prefix (E0)
+    if (scan_code == SCANCODE_EXT_PREFIX) {
+        keyboard.extended_prefix = true;
+        return;
+    }
+    
+    // Handle extended scancodes (with E0 prefix)
+    if (keyboard.extended_prefix) {
+        keyboard_handle_extended_scan_code(scan_code);
+        keyboard.extended_prefix = false;
+        return;
+    }
+    
     bool make = true;
     
     // Check if this is a break code
@@ -140,6 +161,21 @@ void keyboard_handle_scan_code(uint8_t scan_code) {
         make = false;
         scan_code &= 0x7F;
     }
+    
+    // Update ternary key state: -1 (released), 0 (transitioning), +1 (pressed)
+    ternary_key_state_t prev_state = keyboard.key_states[scan_code];
+    ternary_key_state_t new_state = make ? KEY_PRESSED : KEY_RELEASED;
+    
+    // Ternary state transition using gates:
+    // - if prev != new: set to KEY_TRANSITION (0) briefly
+    // - then set to final state (new)
+    if (prev_state != new_state) {
+        keyboard.key_states[scan_code] = KEY_TRANSITION;  // Transition state
+        // Note: In real implementation, would delay before final state
+        keyboard.key_states[scan_code] = new_state;       // Final state
+    }
+    
+    keyboard.last_scancode = scan_code;
     
     // Handle special keys
     switch (scan_code) {
@@ -237,6 +273,77 @@ void keyboard_register_callbacks(void (*press_callback)(uint8_t, uint8_t),
 
 bool keyboard_is_initialized(void) {
     return keyboard.initialized;
+}
+
+ternary_key_state_t keyboard_get_ternary_state(uint8_t scan_code) {
+    if (!keyboard.initialized || scan_code >= 256) {
+        return KEY_RELEASED;
+    }
+    return keyboard.key_states[scan_code];
+}
+
+void keyboard_handle_extended_scan_code(uint8_t scan_code) {
+    // Handle extended scan codes (arrow keys, numpad, etc.)
+    bool make = true;
+    
+    if (scan_code & 0x80) {
+        make = false;
+        scan_code &= 0x7F;
+    }
+    
+    // Create extended scancode (E0 prefix + code)
+    uint16_t extended_code = 0xE000 | scan_code;
+    
+    // Map extended keys to special values
+    switch (extended_code) {
+        case SCANCODE_ARROW_UP:
+            // Arrow up = special character
+            if (make && keyboard.buffer_count < 256) {
+                keyboard.input_buffer[keyboard.buffer_tail] = 0x1E;  // Ctrl-P (custom)
+                keyboard.buffer_tail = (keyboard.buffer_tail + 1) % 256;
+                keyboard.buffer_count++;
+            }
+            break;
+        case SCANCODE_ARROW_DOWN:
+            if (make && keyboard.buffer_count < 256) {
+                keyboard.input_buffer[keyboard.buffer_tail] = 0x1F;  // Ctrl-Q (custom)
+                keyboard.buffer_tail = (keyboard.buffer_tail + 1) % 256;
+                keyboard.buffer_count++;
+            }
+            break;
+        case SCANCODE_ARROW_LEFT:
+            if (make && keyboard.buffer_count < 256) {
+                keyboard.input_buffer[keyboard.buffer_tail] = 0x1C;  // Ctrl-L (custom)
+                keyboard.buffer_tail = (keyboard.buffer_tail + 1) % 256;
+                keyboard.buffer_count++;
+            }
+            break;
+        case SCANCODE_ARROW_RIGHT:
+            if (make && keyboard.buffer_count < 256) {
+                keyboard.input_buffer[keyboard.buffer_tail] = 0x1D;  // Ctrl-M (custom)
+                keyboard.buffer_tail = (keyboard.buffer_tail + 1) % 256;
+                keyboard.buffer_count++;
+            }
+            break;
+    }
+}
+
+uint8_t keyboard_get_leds(void) {
+    // Read LED state from keyboard controller
+    // In real implementation, would query keyboard
+    uint8_t leds = 0;
+    if (keyboard.caps_lock) leds |= 0x04;
+    if (keyboard.num_lock) leds |= 0x02;
+    if (keyboard.scroll_lock) leds |= 0x01;
+    return leds;
+}
+
+void keyboard_set_leds(uint8_t led_mask) {
+    // Set LED state on keyboard
+    // Would send command to keyboard controller
+    keyboard.caps_lock = (led_mask & 0x04) != 0;
+    keyboard.num_lock = (led_mask & 0x02) != 0;
+    keyboard.scroll_lock = (led_mask & 0x01) != 0;
 }
 
 // =============================================================================

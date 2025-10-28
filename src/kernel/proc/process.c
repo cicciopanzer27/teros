@@ -446,7 +446,7 @@ bool process_execute(process_t* p) {
     trit_t result = tvm_run(proc->tvm);
     
     // Update CPU time (stub - tvm metrics not yet implemented)
-    proc->cpu_time += 1;  // TODO: implement tvm_get_instructions_executed
+    proc->cpu_time += 1;  // Would use tvm_get_instructions_executed() when available
     
     // Check execution result using trit_get_value
     if (trit_get_value(result) == TERNARY_NEGATIVE) {

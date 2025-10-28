@@ -78,10 +78,20 @@ typedef enum {
 
 typedef void (*signal_handler_t)(int sig);
 
+// Ternary signal delivery state: -1 (blocked), 0 (pending), +1 (delivered)
+typedef int8_t signal_delivery_state_t;
+#define SIGNAL_BLOCKED   -1
+#define SIGNAL_PENDING   0
+#define SIGNAL_DELIVERED +1
+
 int signal_register(int sig, signal_handler_t handler);
 int signal_send(int pid, int sig);
 int signal_dispatch(int pid, int sig);
 signal_handler_t signal_get_handler(int sig);
+int signal_set_mask(uint32_t mask);
+uint32_t signal_get_mask(void);
+int signal_unmask(int sig);
+int signal_mask(int sig);
 
 // =============================================================================
 // SHARED MEMORY
@@ -93,6 +103,8 @@ typedef struct shared_memory {
     size_t size;
     uint32_t ref_count;
     bool is_valid;
+    bool copy_on_write;  // COW flag
+    uint32_t write_count;  // Track writes for COW
 } shared_memory_t;
 
 int shm_open(const char* name, int oflag, uint32_t mode);
@@ -111,6 +123,8 @@ typedef struct semaphore {
     int32_t max_value;
     uint32_t ref_count;
     bool is_valid;
+    bool deadlock_detected;  // Deadlock detection flag
+    uint32_t wait_count;     // Number of processes waiting
 } semaphore_t;
 
 int sem_open(const char* name, int oflag, uint32_t mode, uint32_t value);
@@ -119,6 +133,42 @@ int sem_wait(int sem_id);
 int sem_post(int sem_id);
 int sem_trywait(int sem_id);
 semaphore_t* sem_get(int sem_id);
+
+// =============================================================================
+// IPC INITIALIZATION
+// =============================================================================
+
+// =============================================================================
+// MESSAGE QUEUES
+// =============================================================================
+
+// Ternary message priority: -1 (high), 0 (normal), +1 (low)
+typedef int8_t message_priority_t;
+#define MSG_PRIO_HIGH   -1
+#define MSG_PRIO_NORMAL  0
+#define MSG_PRIO_LOW    +1
+
+typedef struct message_queue_entry {
+    void* data;
+    size_t size;
+    message_priority_t priority;
+    struct message_queue_entry* next;
+} message_queue_entry_t;
+
+typedef struct message_queue {
+    uint32_t id;
+    message_queue_entry_t* messages;
+    uint32_t msg_count;
+    uint32_t max_messages;
+    size_t max_message_size;
+    bool is_valid;
+} message_queue_t;
+
+int mq_open(const char* name, int oflag, uint32_t mode, uint32_t max_msgs, size_t max_msg_size);
+int mq_send(int mq_id, const void* buf, size_t size, message_priority_t priority);
+ssize_t mq_receive(int mq_id, void* buf, size_t max_size, message_priority_t* priority);
+int mq_close(int mq_id);
+message_queue_t* mq_get(int mq_id);
 
 // =============================================================================
 // IPC INITIALIZATION

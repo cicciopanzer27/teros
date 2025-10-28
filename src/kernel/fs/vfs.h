@@ -150,6 +150,38 @@ ssize_t vfs_read(vfs_file_t* file, void* buf, size_t count);
 ssize_t vfs_write(vfs_file_t* file, const void* buf, size_t count);
 
 /**
+ * @brief Seek in file
+ * @param file File handle
+ * @param offset Offset
+ * @param whence SEEK_SET, SEEK_CUR or SEEK_END
+ * @return New position or -1 on error
+ */
+off_t vfs_lseek(vfs_file_t* file, off_t offset, int whence);
+
+/**
+ * @brief Get file statistics
+ * @param path File path
+ * @param stats Output stat structure
+ * @return 0 on success, -1 on failure
+ */
+int vfs_stat(const char* path, void* stats);
+
+/**
+ * @brief Create directory
+ * @param path Directory path
+ * @param mode Directory permissions
+ * @return 0 on success, -1 on failure
+ */
+int vfs_mkdir(const char* path, uint32_t mode);
+
+/**
+ * @brief Remove directory
+ * @param path Directory path
+ * @return 0 on success, -1 on failure
+ */
+int vfs_rmdir(const char* path);
+
+/**
  * @brief Check if VFS is initialized
  * @return true if initialized
  */

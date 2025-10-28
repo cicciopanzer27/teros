@@ -2,8 +2,8 @@
 
 Experimental ternary operating system kernel for x86-64.
 
-**Version**: Development  
-**Status**: Early stage - compilation successful, boot untested  
+**Version**: 1.0-beta  
+**Status**: Feature complete - all core components implemented, ready for testing  
 **Last Updated**: October 2025
 
 ---
@@ -161,6 +161,32 @@ Memory abstraction for ternary storage
 **Files**: `src/kernel/ternary_memory.{c,h}`  
 **Status**: Complete
 
+#### Ternary Gates ⭐ NEW
+Complete implementation of all 19,683 ternary logic functions.
+
+**Features**:
+- 19,683 dyadic functions (2-input → 1-output)
+- 27 monadic functions (1-input → 1-output)
+- O(1) lookup with pre-computed tables (173 KB)
+- Algebraic property analysis
+- Post classification
+- Functionally complete sets
+
+**Files**: `src/kernel/ternary_gates.{c,h}`, `ternary_gates_data.c`, `ternary_gates_analysis.c`  
+**Status**: Complete
+
+#### Ternary Conversion ⭐ NEW
+Binary ↔ Balanced ternary conversion.
+
+**Operations**:
+- Binario → Ternario: n = Σ(d_i · 3^i)
+- Ternario → Binario
+- Addition with carry
+- Multiplication
+
+**Files**: `src/kernel/ternary_convert.{c,h}`  
+**Status**: Complete
+
 ### Ternary Virtual Machine (TVM)
 
 Register-based VM executing T3-ISA instructions
@@ -173,7 +199,7 @@ Register-based VM executing T3-ISA instructions
 **Files**: `src/kernel/tvm.{c,h}`  
 **Status**: Complete
 
-### T3-ISA (Ternary Instruction Set)
+### T3-ISA (Ternary Instruction Set) ⭐ ENHANCED
 
 **Instruction Categories**:
 - Arithmetic: ADD, SUB, MUL, DIV, MOD
@@ -181,24 +207,31 @@ Register-based VM executing T3-ISA instructions
 - Memory: LOAD, STORE, PUSH, POP
 - Control: JMP, JZ, CALL, RET, NOP
 - System: SYSCALL, HALT
+- **TGATE**: Ternary gate operation (NEW)
 
-**Encoding**: 27 opcodes (3^3)
+**Encoding**: Extended to 30+ opcodes
 
 **Files**: `src/kernel/t3_isa.{c,h}`  
-**Status**: Complete
+**Status**: Complete with TGATE instruction
 
-### Lambda Calculus Engine
+### Lambda Calculus Engine ⭐ ENHANCED
 
-Lambda calculus evaluator integrated with TVM
+Complete lambda calculus evaluator with TVM integration
 
 **Features**:
 - Lambda term representation (VAR, ABS, APP)
-- Beta reduction
-- Church encoding
-- Type checking (partial)
+- Beta reduction: (λx.M) N → M[x := N]
+- Alpha and eta conversion
+- Church encoding (numerals, booleans, pairs)
+- Lambda³ to T3 bytecode compiler
+- Full integration with TVM
 
-**Files**: `src/kernel/lambda_engine.{c,h}`  
-**Status**: Partial - bytecode generation incomplete
+**Files**: 
+- `src/kernel/lambda_engine.{c,h}` - Beta reduction engine
+- `src/kernel/lambda_church.{c,h}` - Church encoding ⭐ NEW
+- `src/kernel/lambda_compiler.{c,h}` - Bytecode compiler ⭐ NEW
+
+**Status**: Complete
 
 ### Ternary Toolchain
 

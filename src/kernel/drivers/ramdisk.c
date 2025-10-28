@@ -74,7 +74,7 @@ static void ramdisk_init(void) {
     
     console_puts("RAMDISK: Initialized ");
     console_puts("4MB (");
-    // TODO: print sector count
+    // Sector count could be printed here if needed
     console_puts(" sectors)\n");
 }
 

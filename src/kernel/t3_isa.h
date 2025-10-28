@@ -70,6 +70,7 @@
 #define T3_OPCODE_MOV     27
 #define T3_OPCODE_LEA     28
 #define T3_OPCODE_TST     29
+#define T3_OPCODE_TGATE   30  // Ternary Gate Operation
 
 // Privilege levels
 #define T3_PRIVILEGE_RING0 0  // Kernel mode
@@ -215,6 +216,7 @@ trit_t t3_execute_int(t3_instruction_t* instruction, t3_register_t* registers);
 trit_t t3_execute_mov(t3_instruction_t* instruction, t3_register_t* registers);
 trit_t t3_execute_lea(t3_instruction_t* instruction, t3_register_t* registers);
 trit_t t3_execute_tst(t3_instruction_t* instruction, t3_register_t* registers);
+trit_t t3_execute_tgate(t3_instruction_t* instruction, t3_register_t* registers);
 
 // =============================================================================
 // T3-ISA UTILITY FUNCTIONS

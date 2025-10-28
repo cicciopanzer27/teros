@@ -42,6 +42,28 @@ typedef struct {
     bool is_root;
 } user_t;
 
+// Ternary permission states (-1: deny, 0: inherit, +1: allow)
+typedef int8_t permission_state_t;
+#define PERM_DENY  -1
+#define PERM_INHERIT 0
+#define PERM_ALLOW  +1
+
+// ACL entry
+typedef struct acl_entry {
+    uid_t uid;
+    gid_t gid;
+    uint32_t rwx_bits;  // Read/write/execute bits
+    struct acl_entry* next;
+} acl_entry_t;
+
+// Ternary permission check result
+typedef struct {
+    permission_state_t owner;
+    permission_state_t group;
+    permission_state_t other;
+    permission_state_t final;  // Final result using ternary gate
+} ternary_permission_result_t;
+
 // Security functions
 int security_init(void);
 uid_t security_get_current_uid(void);
@@ -49,9 +71,16 @@ gid_t security_get_current_gid(void);
 user_t* security_get_current_user(void);
 int security_set_uid(uid_t uid);
 bool security_check_permission(uint32_t mode, uid_t file_uid, gid_t file_gid);
+ternary_permission_result_t security_check_permission_ternary(uint32_t mode, uid_t file_uid, gid_t file_gid);
 int security_add_user(const char* username, uid_t uid, gid_t gid);
 user_t* security_get_user_by_name(const char* username);
 user_t* security_get_user_by_uid(uid_t uid);
+
+// ACL functions
+acl_entry_t* security_create_acl(void);
+void security_add_acl_entry(acl_entry_t* acl, uid_t uid, gid_t gid, uint32_t rwx);
+bool security_check_acl(acl_entry_t* acl, uid_t uid, gid_t gid, uint32_t operation);
+void security_destroy_acl(acl_entry_t* acl);
 
 #endif // SECURITY_H
 

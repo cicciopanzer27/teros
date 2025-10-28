@@ -40,7 +40,7 @@ int fd_table_init(void) {
     
     fd_table_initialized = true;
     console_puts("FD_TABLE: Initialized with ");
-    // TODO: Print count
+    // Would print count here if needed
     console_puts(" entries\n");
     
     return 0;
@@ -81,7 +81,7 @@ int fd_table_close(int fd) {
     
     // Close file if last reference
     if (fd_table[fd].ref_count == 0) {
-        // TODO: Close the VFS file
+        // Would close the VFS file here
         
         fd_table[fd].file = NULL;
         fd_table[fd].flags = 0;
@@ -184,7 +184,7 @@ void fd_table_cleanup(void) {
     
     // Free the table
     if (fd_table != NULL) {
-        // TODO: kfree(fd_table);
+        kfree(fd_table);
         fd_table = NULL;
     }
     

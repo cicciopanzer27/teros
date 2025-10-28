@@ -163,12 +163,18 @@ ssize_t pipe_write(int fd, const void* buf, size_t count) {
 
 static signal_handler_t signal_handlers[SIGMAX];
 static bool signal_registered[SIGMAX];
+static uint32_t signal_mask_value = 0;  // Bitmask for blocked signals
+static uint32_t pending_signals = 0;    // Pending signals
+static signal_delivery_state_t signal_states[SIGMAX];  // Ternary delivery states
 
 static void signal_init(void) {
     for (int i = 0; i < SIGMAX; i++) {
         signal_handlers[i] = NULL;
         signal_registered[i] = false;
+        signal_states[i] = SIGNAL_PENDING;  // Start with pending state
     }
+    signal_mask_value = 0;
+    pending_signals = 0;
 }
 
 int signal_register(int sig, signal_handler_t handler) {
@@ -246,6 +252,19 @@ int signal_send(int pid, int sig) {
 
 int signal_dispatch(int pid, int sig) {
     (void)pid;  // Unused for MVP
+    
+    // Check if signal is masked (blocked)
+    if ((signal_mask_value & (1U << sig)) != 0) {
+        // Signal is blocked, mark as pending
+        pending_signals |= (1U << sig);
+        signal_states[sig] = SIGNAL_BLOCKED;
+        return 0;
+    }
+    
+    // Signal can be delivered
+    signal_states[sig] = SIGNAL_DELIVERED;
+    pending_signals &= ~(1U << sig);
+    
     signal_handler_t handler = signal_get_handler(sig);
     
     if (handler != NULL) {
@@ -254,6 +273,40 @@ int signal_dispatch(int pid, int sig) {
     }
     
     // Default action
+    return 0;
+}
+
+int signal_set_mask(uint32_t mask) {
+    signal_mask_value = mask;
+    return 0;
+}
+
+uint32_t signal_get_mask(void) {
+    return signal_mask_value;
+}
+
+int signal_unmask(int sig) {
+    if (sig < 0 || sig >= SIGMAX) {
+        return -1;
+    }
+    
+    signal_mask_value &= ~(1U << sig);
+    
+    // If signal was pending, deliver it now
+    if ((pending_signals & (1U << sig)) != 0) {
+        pending_signals &= ~(1U << sig);
+        return signal_dispatch(0, sig);  // 0 = current process
+    }
+    
+    return 0;
+}
+
+int signal_mask(int sig) {
+    if (sig < 0 || sig >= SIGMAX) {
+        return -1;
+    }
+    
+    signal_mask_value |= (1U << sig);
     return 0;
 }
 
@@ -272,6 +325,8 @@ static void shm_init(void) {
         shm_blocks[i].size = 0;
         shm_blocks[i].ref_count = 0;
         shm_blocks[i].is_valid = false;
+        shm_blocks[i].copy_on_write = true;  // Enable COW by default
+        shm_blocks[i].write_count = 0;
     }
 }
 
@@ -313,22 +368,58 @@ shared_memory_t* shm_get(int shm_id) {
     return NULL;
 }
 
+// COW handler for shared memory (called on write fault)
+static void* shm_cow_copy(shared_memory_t* shm, size_t size) {
+    if (shm == NULL || !shm->copy_on_write) {
+        return shm->addr;
+    }
+    
+    // Allocate new copy
+    void* new_addr = kmalloc(size);
+    if (new_addr == NULL) {
+        return NULL;
+    }
+    
+    // Copy original data
+    if (shm->addr != NULL) {
+        memcpy(new_addr, shm->addr, size);
+    }
+    
+    shm->write_count++;
+    
+    // Disable COW after first write
+    // In real implementation, would handle multiple readers
+    shm->addr = new_addr;
+    
+    return new_addr;
+}
+
 void* shm_map(int shm_id, size_t size) {
     shared_memory_t* shm = shm_get(shm_id);
     if (shm == NULL || size == 0) {
         return NULL;
     }
     
-    // Allocate memory
-    void* addr = kmalloc(size);
-    if (addr == NULL) {
-        return NULL;
+    // If first mapping, allocate memory
+    if (shm->addr == NULL) {
+        void* addr = kmalloc(size);
+        if (addr == NULL) {
+            return NULL;
+        }
+        
+        shm->addr = addr;
+        shm->size = size;
+    } else {
+        // Handle COW - create copy if needed
+        shm->addr = shm_cow_copy(shm, size);
+        if (shm->addr == NULL) {
+            return NULL;
+        }
     }
     
-    shm->addr = addr;
-    shm->size = size;
+    shm->ref_count++;
     
-    return addr;
+    return shm->addr;
 }
 
 int shm_unmap(void* addr, size_t size) {
@@ -380,6 +471,8 @@ static void sem_init(void) {
         semaphores[i].max_value = 0;
         semaphores[i].ref_count = 0;
         semaphores[i].is_valid = false;
+        semaphores[i].deadlock_detected = false;
+        semaphores[i].wait_count = 0;
     }
 }
 
@@ -420,21 +513,64 @@ semaphore_t* sem_get(int sem_id) {
     return NULL;
 }
 
+// Deadlock detection using ternary logic
+// Ternary deadlock states: -1 (deadlock detected), 0 (checking), +1 (no deadlock)
+static int sem_check_deadlock(semaphore_t* sem) {
+    if (sem == NULL) {
+        return -1;
+    }
+    
+    // Check for deadlock conditions
+    // Basic check: if all semaphores are at 0 and all have waiting processes
+    if (sem->value <= 0 && sem->wait_count > 0) {
+        // Could be deadlock - check all semaphores
+        int total_waiting = 0;
+        for (int i = 0; i < MAX_SEMAPHORES; i++) {
+            if (semaphores[i].is_valid) {
+                total_waiting += semaphores[i].wait_count;
+            }
+        }
+        
+        // If all semaphores have waiters and are at 0, it's a deadlock
+        if (total_waiting > 0 && sem_count == total_waiting) {
+            sem->deadlock_detected = true;
+            return -1;  // Deadlock!
+        }
+    }
+    
+    return 1;  // No deadlock
+}
+
 int sem_wait(int sem_id) {
     semaphore_t* sem = sem_get(sem_id);
     if (sem == NULL) {
         return -1;
     }
     
+    // Increment wait count
+    sem->wait_count++;
+    
     // Wait for semaphore
     // Note: This is a spinlock implementation for MVP
     // A full implementation would integrate with the scheduler to block/wake processes
-    // TODO: Integrate with scheduler for proper process blocking
+    int iterations = 0;
     while (sem->value <= 0) {
+        // Check for deadlock periodically
+        if ((iterations % 1000) == 0) {
+            int deadlock = sem_check_deadlock(sem);
+            if (deadlock < 0) {
+                sem->wait_count--;
+                console_puts("IPC: Semaphore deadlock detected!\n");
+                return -1;
+            }
+        }
+        
         // Busy wait (yield CPU)
         asm volatile("pause");
+        iterations++;
     }
     
+    sem->wait_count--;
     sem->value--;
     return 0;
 }
@@ -482,6 +618,116 @@ int sem_close(int sem_id) {
 // IPC INITIALIZATION
 // =============================================================================
 
+// =============================================================================
+// MESSAGE QUEUES
+// =============================================================================
+
+#define MAX_MESSAGE_QUEUES 32
+
+static message_queue_t message_queues[MAX_MESSAGE_QUEUES];
+static int mq_count = 0;
+static uint32_t next_mq_id = 1;
+
+static void mq_init(void) {
+    for (int i = 0; i < MAX_MESSAGE_QUEUES; i++) {
+        message_queues[i].id = 0;
+        message_queues[i].messages = NULL;
+        message_queues[i].msg_count = 0;
+        message_queues[i].max_messages = 0;
+        message_queues[i].max_message_size = 0;
+        message_queues[i].is_valid = false;
+    }
+}
+
+int mq_open(const char* name, int oflag, uint32_t mode, uint32_t max_msgs, size_t max_msg_size) {
+    (void)name; (void)oflag; (void)mode;
+    
+    int idx = -1;
+    for (int i = 0; i < MAX_MESSAGE_QUEUES; i++) {
+        if (!message_queues[i].is_valid) {
+            idx = i;
+            break;
+        }
+    }
+    
+    if (idx == -1) return -1;
+    
+    message_queues[idx].id = next_mq_id++;
+    message_queues[idx].max_messages = max_msgs;
+    message_queues[idx].max_message_size = max_msg_size;
+    message_queues[idx].msg_count = 0;
+    message_queues[idx].messages = NULL;
+    message_queues[idx].is_valid = true;
+    
+    mq_count++;
+    return message_queues[idx].id;
+}
+
+int mq_send(int mq_id, const void* buf, size_t size, message_priority_t priority) {
+    message_queue_t* mq = mq_get(mq_id);
+    if (mq == NULL || buf == NULL || size == 0) return -1;
+    
+    if (size > mq->max_message_size) return -1;
+    if (mq->msg_count >= mq->max_messages) return -1;
+    
+    message_queue_entry_t* entry = (message_queue_entry_t*)kmalloc(sizeof(message_queue_entry_t));
+    if (entry == NULL) return -1;
+    
+    entry->data = kmalloc(size);
+    if (entry->data == NULL) return -1;
+    
+    memcpy(entry->data, buf, size);
+    entry->size = size;
+    entry->priority = priority;
+    entry->next = NULL;
+    
+    message_queue_entry_t** p = &mq->messages;
+    while (*p != NULL && (*p)->priority <= priority) {
+        p = &(*p)->next;
+    }
+    entry->next = *p;
+    *p = entry;
+    mq->msg_count++;
+    
+    return 0;
+}
+
+ssize_t mq_receive(int mq_id, void* buf, size_t max_size, message_priority_t* priority) {
+    message_queue_t* mq = mq_get(mq_id);
+    if (mq == NULL || buf == NULL || mq->messages == NULL) return -1;
+    
+    message_queue_entry_t* entry = mq->messages;
+    mq->messages = entry->next;
+    
+    size_t copy_size = (entry->size > max_size) ? max_size : entry->size;
+    memcpy(buf, entry->data, copy_size);
+    
+    if (priority) *priority = entry->priority;
+    
+    mq->msg_count--;
+    return copy_size;
+}
+
+int mq_close(int mq_id) {
+    for (int i = 0; i < MAX_MESSAGE_QUEUES; i++) {
+        if (message_queues[i].id == (uint32_t)mq_id && message_queues[i].is_valid) {
+            message_queues[i].is_valid = false;
+            mq_count--;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+message_queue_t* mq_get(int mq_id) {
+    for (int i = 0; i < MAX_MESSAGE_QUEUES; i++) {
+        if (message_queues[i].id == (uint32_t)mq_id && message_queues[i].is_valid) {
+            return &message_queues[i];
+        }
+    }
+    return NULL;
+}
+
 int ipc_init(void) {
     console_puts("IPC: Initializing IPC system...\n");
     
@@ -489,6 +735,7 @@ int ipc_init(void) {
     signal_init();
     shm_init();
     sem_init();
+    mq_init();
     
     console_puts("IPC: Initialized\n");
     

@@ -8,6 +8,7 @@
 #include "t3_isa.h"
 #include "trit.h"
 #include "trit_array.h"
+#include "ternary_gates.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -122,6 +123,8 @@ trit_t t3_instruction_execute(t3_instruction_t* instruction, t3_register_t* regi
             return t3_execute_lea(instruction, registers);
         case T3_OPCODE_TST:
             return t3_execute_tst(instruction, registers);
+        case T3_OPCODE_TGATE:
+            return t3_execute_tgate(instruction, registers);
         default:
             return trit_create(TERNARY_UNKNOWN);
     }
@@ -531,6 +534,41 @@ const char* t3_opcode_to_string(uint8_t opcode) {
         case T3_OPCODE_MOV: return "MOV";
         case T3_OPCODE_LEA: return "LEA";
         case T3_OPCODE_TST: return "TST";
+        case T3_OPCODE_TGATE: return "TGATE";
         default: return "UNKNOWN";
     }
+}
+
+// =============================================================================
+// TERNARY GATE INSTRUCTION
+// =============================================================================
+
+/**
+ * Execute ternary gate operation
+ * TGATE gate_id, reg_src1, reg_src2, reg_dst
+ * 
+ * Evaluates a ternary logic gate using the 19,683 lookup tables
+ */
+trit_t t3_execute_tgate(t3_instruction_t* instruction, t3_register_t* registers)
+{
+    if (instruction->operand1 >= T3_REGISTER_COUNT ||
+        instruction->operand2 >= T3_REGISTER_COUNT ||
+        instruction->operand3 >= T3_REGISTER_COUNT) {
+        return trit_create(TERNARY_UNKNOWN);
+    }
+    
+    // Extract gate ID from immediate value
+    uint16_t gate_id = (uint16_t)instruction->immediate;
+    
+    // Get source values
+    trit_t src1 = registers[instruction->operand2];
+    trit_t src2 = registers[instruction->operand3];
+    
+    // Evaluate gate
+    trit_t result = ternary_gate_eval(gate_id, src1, src2);
+    
+    // Store result
+    registers[instruction->operand1] = result;
+    
+    return result;
 }

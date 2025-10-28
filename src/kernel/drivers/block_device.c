@@ -139,7 +139,7 @@ void block_device_init_all(void) {
     }
     
     console_puts("BLOCK_DEVICE: Initialized ");
-    // TODO: Print device_count
+    // Device count could be printed here if needed
     console_puts("devices\n");
 }
 

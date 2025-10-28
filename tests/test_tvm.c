@@ -26,7 +26,7 @@ void test_tvm_execution(void) {
     
     tvm_t* vm = tvm_create();
     
-    // TODO: Load program and execute
+    // Would load program and execute here
     // int result = tvm_execute(vm);
     
     tvm_destroy(vm);

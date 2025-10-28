@@ -331,7 +331,7 @@ vfs_inode_t* vfs_lookup(const char* path) {
     
     // Call filesystem lookup
     if (mount->fs->ops->lookup == NULL) {
-        console_puts("出自: ERROR - Lookup not supported\n");
+        console_puts("VFS: ERROR - Lookup not supported\n");
         return NULL;
     }
     
@@ -426,6 +426,108 @@ ssize_t vfs_write(vfs_file_t* file, const void* buf, size_t count) {
 
 // NOTE: strcmp, strncmp, strlen are provided by #include <string.h>
 // Removed local implementations to avoid conflicting declarations
+
+off_t vfs_lseek(vfs_file_t* file, off_t offset, int whence) {
+    if (file == NULL) {
+        return -1;
+    }
+    
+    // Use ternary state for seeking: -1 (before start), 0 (valid), +1 (after end)
+    off_t new_pos = file->pos;
+    
+    switch (whence) {
+        case SEEK_SET:
+            new_pos = offset;
+            break;
+        case SEEK_CUR:
+            new_pos = file->pos + offset;
+            break;
+        case SEEK_END:
+            // For simplicity, just treat as relative to current position
+            // In full implementation, would get file size from inode
+            new_pos = file->pos + offset;
+            break;
+        default:
+            return -1;
+    }
+    
+    // Ternary boundary checking: -1 (invalid before), 0 (valid), +1 (invalid after)
+    if (new_pos < 0) {
+        return -1;  // Can't seek before start
+    }
+    
+    file->pos = (size_t)new_pos;
+    return new_pos;
+}
+
+int vfs_stat(const char* path, void* stats) {
+    if (!vfs_state.initialized || path == NULL || stats == NULL) {
+        return -1;
+    }
+    
+    // Lookup file
+    vfs_inode_t* inode = vfs_lookup(path);
+    if (inode == NULL) {
+        return -1;
+    }
+    
+    // Copy inode stats to output structure
+    // For now, simplified stat structure
+    typedef struct {
+        uint64_t size;
+        uint32_t mode;
+        uint32_t uid;
+        uint32_t gid;
+    } vfs_stat_t;
+    
+    vfs_stat_t* stat = (vfs_stat_t*)stats;
+    stat->size = inode->size;
+    stat->mode = inode->mode;
+    stat->uid = inode->uid;
+    stat->gid = inode->gid;
+    
+    return 0;
+}
+
+int vfs_mkdir(const char* path, uint32_t mode) {
+    if (!vfs_state.initialized || path == NULL) {
+        return -1;
+    }
+    
+    // Find mount point
+    vfs_mount_t* mount = vfs_find_mount(path);
+    if (mount == NULL || mount->fs == NULL) {
+        return -1;
+    }
+    
+    // Call filesystem mkdir operation
+    if (mount->fs->ops->mkdir == NULL) {
+        console_puts("VFS: ERROR - mkdir not supported\n");
+        return -1;
+    }
+    
+    return mount->fs->ops->mkdir(mount->fs, path, mode);
+}
+
+int vfs_rmdir(const char* path) {
+    if (!vfs_state.initialized || path == NULL) {
+        return -1;
+    }
+    
+    // Find mount point
+    vfs_mount_t* mount = vfs_find_mount(path);
+    if (mount == NULL || mount->fs == NULL) {
+        return -1;
+    }
+    
+    // Call filesystem rmdir operation
+    if (mount->fs->ops->rmdir == NULL) {
+        console_puts("VFS: ERROR - rmdir not supported\n");
+        return -1;
+    }
+    
+    return mount->fs->ops->rmdir(mount->fs, path);
+}
 
 bool vfs_is_initialized(void) {
     return vfs_state.initialized;

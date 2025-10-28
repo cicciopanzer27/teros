@@ -12,6 +12,28 @@
 #include <stdbool.h>
 
 // =============================================================================
+// TERNARY KEY STATES
+// =============================================================================
+
+// Ternary key state: -1 (released), 0 (transitioning), +1 (pressed)
+typedef int8_t ternary_key_state_t;
+#define KEY_RELEASED -1
+#define KEY_TRANSITION 0
+#define KEY_PRESSED +1
+
+// Extended scancodes
+#define SCANCODE_EXT_PREFIX 0xE0
+#define SCANCODE_EXT_PREFIX2 0xE1
+#define SCANCODE_RIGHT_CTRL 0xE01D
+#define SCANCODE_RIGHT_ALT 0xE038
+#define SCANCODE_ARROW_UP 0xE048
+#define SCANCODE_ARROW_DOWN 0xE050
+#define SCANCODE_ARROW_LEFT 0xE04B
+#define SCANCODE_ARROW_RIGHT 0xE04D
+#define SCANCODE_NUMPAD_ENTER 0xE01C
+#define SCANCODE_NUMPAD_SLASH 0xE035
+
+// =============================================================================
 // KEYBOARD FUNCTIONS
 // =============================================================================
 
@@ -51,6 +73,32 @@ void keyboard_register_callbacks(void (*press_callback)(uint8_t, uint8_t),
  * @return true if initialized
  */
 bool keyboard_is_initialized(void);
+
+/**
+ * @brief Get ternary key state
+ * @param scan_code Scan code to check
+ * @return KEY_RELEASED, KEY_TRANSITION, or KEY_PRESSED
+ */
+ternary_key_state_t keyboard_get_ternary_state(uint8_t scan_code);
+
+/**
+ * @brief Handle extended scan code (E0 prefix)
+ * @param scan_code Extended scan code
+ */
+void keyboard_handle_extended_scan_code(uint8_t scan_code);
+
+/**
+ * @brief Get LED state (Caps/Num/Scroll Lock)
+ * @param led_mask LED mask
+ * @return Current LED state
+ */
+uint8_t keyboard_get_leds(void);
+
+/**
+ * @brief Set LED state
+ * @param led_mask LED mask
+ */
+void keyboard_set_leds(uint8_t led_mask);
 
 #endif // KEYBOARD_H
 

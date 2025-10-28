@@ -13,6 +13,16 @@
 #include <stdbool.h>
 
 // =============================================================================
+// TERNARY FLOW CONTROL STATES
+// =============================================================================
+
+// Ternary flow control state: -1 (stop), 0 (hold), +1 (go)
+typedef int8_t flow_state_t;
+#define FLOW_STOP  -1
+#define FLOW_HOLD  0
+#define FLOW_GO    +1
+
+// =============================================================================
 // SERIAL PORT CONSTANTS
 // =============================================================================
 
@@ -105,6 +115,28 @@ serial_state_t* serial_get_port(uint16_t port);
  * @return true if initialized
  */
 bool serial_is_initialized(uint16_t port);
+
+/**
+ * @brief Enable/disable interrupts on serial port
+ * @param s Serial port
+ * @param bypass enable Interrupts enabled?
+ */
+void serial_set_interrupts(serial_state_t* s, bool enable);
+
+/**
+ * @brief Get flow control state (ternary)
+ * @param s Serial port
+ * @return FLOW_STOP, FLOW_HOLD, or FLOW_GO
+ */
+flow_state_t serial_get_flow_state(serial_state_t* s);
+
+/**
+ * @brief Set flow control
+ * @param s Serial port
+ * @param rts RTS line state
+ * @param dtr DTR line state
+ */
+void serial_set_flow_control(serial_state_t* s, bool rts, bool dtr);
 
 #endif // SERIAL_H
 

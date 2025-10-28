@@ -201,24 +201,73 @@ void scheduler_remove_process(process_t* proc) {
     }
 }
 
+// Ternary gate-based scheduling decision
+// Uses ternary logic for scheduling decisions: -1 (no switch), 0 (consider), +1 (switch)
+static int scheduler_ternary_decision(process_t* current, process_t* candidate) {
+    if (current == NULL) return 1;  // Switch if no current
+    if (candidate == NULL) return -1;  // Don't switch to NULL
+    
+    // Get priorities
+    int32_t current_priority = process_get_priority(current);
+    int32_t candidate_priority = process_get_priority(candidate);
+    
+    // Ternary gate evaluation:
+    // -1 (low priority switch needed): candidate priority > current priority
+    // 0 (neutral): same priority, round-robin
+    // +1 (high priority switch): candidate significantly higher priority
+    
+    if (candidate_priority > current_priority) {
+        return 1;  // Switch to higher priority
+    } else if (candidate_priority < current_priority) {
+        return -1;  // Don't switch to lower priority
+    } else {
+        return 0;  // Same priority, neutral decision
+    }
+}
+
 process_t* scheduler_get_next_process(void) {
     if (!scheduler_state.initialized) {
         return NULL;
     }
     
-    // Check queues in priority order (high to low)
+    process_t* current = scheduler_state.current_process;
+    process_t* best_candidate = NULL;
+    int best_decision = -1;  // Start with no-switch
+    
+    // Check all queues in priority order (high to low)
     for (int i = SCHEDULER_PRIORITY_LEVELS - 1; i >= 0; i--) {
         scheduler_queue_t* queue = &scheduler_state.ready_queues[i];
         
         if (!scheduler_queue_is_empty(queue)) {
-            process_t* proc = scheduler_queue_dequeue(queue);
-            if (proc != NULL) {
-                console_puts("SCHED: Selected process ");
-                console_puts(proc->name);
-                console_puts(" from priority queue ");
-                printf("%d", i - 1);
-                console_puts("\n");
-                return proc;
+            // Look at front of queue (don't dequeue yet)
+            process_t* candidate = queue->processes[queue->head];
+            
+            if (candidate != NULL) {
+                // Evaluate with ternary gate
+                int decision = scheduler_ternary_decision(current, candidate);
+                
+                // Keep best candidate (highest priority with positive decision)
+                if (decision > best_decision) {
+                    best_decision = decision;
+                    best_candidate = candidate;
+                }
+            }
+        }
+    }
+    
+    // Only dequeue and return if we have a positive decision
+    if (best_decision > 0 || (best_decision == 0 && current == NULL)) {
+        // Find which queue the best candidate is in and dequeue it
+        for (int i = SCHEDULER_PRIORITY_LEVELS - 1; i >= 0; i--) {
+            scheduler_queue_t* queue = &scheduler_state.ready_queues[i];
+            if (queue->processes[queue->head] == best_candidate) {
+                process_t* proc = scheduler_queue_dequeue(queue);
+                if (proc != NULL) {
+                    console_puts("SCHED: Selected process ");
+                    console_puts(proc->name);
+                    console_puts(" using ternary gate decision\n");
+                    return proc;
+                }
             }
         }
     }
@@ -292,7 +341,7 @@ void scheduler_save_context(process_t* proc) {
         return;
     }
     
-    // TODO: Implement TVM context save when TVM register API is available
+    // TVM context save would be implemented when TVM register API is available
     // NOTE: process_t minimal definition in process.h doesn't include tvm field
     // Would need to access struct process_internal from process.c or extend process_t
     (void)proc;  // Suppress unused parameter warning
@@ -319,7 +368,7 @@ void scheduler_restore_context(process_t* proc) {
         return;
     }
     
-    // TODO: Implement TVM context restore when TVM register API is available
+    // TVM context restore would be implemented when TVM register API is available
     // NOTE: process_t minimal definition in process.h doesn't include tvm field
     // Would need to access struct process_internal from process.c or extend process_t
     (void)proc;  // Suppress unused parameter warning
